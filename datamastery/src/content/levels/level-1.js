@@ -309,16 +309,16 @@ export const level1 = {
       nextMission: '1.5',
     },
 
-    // ─── 1.5 Don't Only Look at the Top ──────────────────────────────
+    // ─── 1.5 Inspect Random Records ──────────────────────────────
     {
       id: '1.5',
       level: 'level-1',
       subLevel: '1.5',
       type: 'guided',
       mentor: 'maya',
-      title: "Don't Only Look at the Top",
-      subtitle: 'Inspecting bottom and random rows',
-      learningObjective: 'Inspect DataFrame using tail() and sample() methods',
+      title: 'Inspect Random Records',
+      subtitle: 'Inspecting random rows of a DataFrame',
+      learningObjective: 'Inspect a random sample of rows using the df.sample() method',
       
       businessSituation: [
         "Here's something I learned the hard way.",
@@ -334,9 +334,9 @@ export const level1 = {
         },
       },
       
-      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Show the last few rows\n\n# Show a random sample of 5 rows\n`,
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Show a random sample of 5 rows\n`,
       
-      expectedConcepts: ['tail', 'sample'],
+      expectedConcepts: ['sample'],
       
       conversation: {
         situation: [
@@ -345,24 +345,24 @@ export const level1 = {
           "Always check more than just the top.",
         ],
         concept: {
-          name: 'tail() and sample()',
-          explanation: "`tail()` shows the last rows — useful for checking recent imports. `sample()` picks random rows, giving you a broader view of the data.",
-          why: "If new data was appended to the file, the bottom rows may have different formatting or quality issues.",
+          name: 'sample()',
+          explanation: "`sample(n)` picks random rows from your DataFrame. For example, `df.sample(5)` will return 5 random rows.",
+          why: "Checking random samples is the best way to get an unbiased view of your dataset's layout and content quality.",
         },
-        task: "Show me the last few rows, then a random sample of 5 rows.",
-        resultReaction: "See? The bottom of the file can look quite different.",
-        resultExplanation: "By checking the top, bottom, and random samples, you get a much better sense of the real data. This is a habit worth building early.",
+        task: "Show me a random sample of 5 rows from the dataset.",
+        resultReaction: "Great job — a random sample gives you a good cross-section.",
+        resultExplanation: "By inspecting random samples, you can catch outliers or anomalies that don't show up in the top rows.",
       },
       
       hints: {
-        taskReminder: "Maya wants to see the last rows and a random sample.",
-        conceptReminder: "tail() shows the bottom, sample() picks random rows.",
-        syntaxClue: "Try: df.tail() and then df.sample(5)",
+        taskReminder: "Maya wants to see a random sample of 5 rows.",
+        conceptReminder: "sample() picks random rows. You can pass the number of rows as an argument.",
+        syntaxClue: "Try: df.sample(5)",
       },
       
       validator: {
         type: 'semantic',
-        fn: 'validateTailSample',
+        fn: 'validateSample',
       },
       
       rewards: {
@@ -381,14 +381,14 @@ export const level1 = {
       nextMission: '1.6',
     },
 
-    // ─── 1.6 Give Me the Quick Picture ────────────────────────────────
+    // ─── 1.6 Quick Dataset Summary ────────────────────────────────
     {
       id: '1.6',
       level: 'level-1',
       subLevel: '1.6',
       type: 'guided',
       mentor: 'maya',
-      title: 'Give Me the Quick Picture',
+      title: 'Quick Dataset Summary',
       subtitle: 'Statistical summary of a DataFrame',
       learningObjective: 'Generate statistical descriptions with df.describe()',
       
@@ -451,14 +451,14 @@ export const level1 = {
       nextMission: '1.7',
     },
 
-    // ─── 1.7 First Week Review (LEVEL CHALLENGE) ─────────────────────
+    // ─── 1.7 First Week Performance Review (LEVEL CHALLENGE) ─────────────────────
     {
       id: '1.7',
       level: 'level-1',
       subLevel: '1.7',
       type: 'challenge',
       mentor: 'maya',
-      title: 'First Week Review',
+      title: 'First Week Performance Review',
       subtitle: 'Explore an unfamiliar dataset independently',
       learningObjective: 'Independently load, size-check, field-check, type-check, and summarize a new dataset',
       
@@ -495,7 +495,7 @@ export const level1 = {
           'checked-size': "Right. Now what kind of data are we looking at?",
           'checked-columns': "Good — you know the fields. What types did Pandas assign?",
           'checked-types': "Any first impressions from the numbers?",
-          'summarized': "Nice work. You didn't need me to tell you what to check.\n\nThat's a solid first week.",
+          'summarized': "You've survived your first week at NovaMetrics.\n\nYou now inspect unfamiliar data like an analyst instead of guessing.\n\nTomorrow you'll join the Data Quality team.",
         },
       },
       

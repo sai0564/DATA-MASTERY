@@ -107,24 +107,24 @@ export function validateDtypes({ stdout }) {
 }
 
 // ─── 1.5 — Don't Only Look at the Top ──────────────────────────────
-export function validateTailSample({ stdout }) {
+// ─── 1.5 — Inspect Random Records ──────────────────────────────
+export function validateSample({ stdout, variables }) {
   const hasCustomerData = stdout.includes('customer_id') || stdout.includes('CUST-');
-  const tableBlocks = (stdout.match(/customer_id/g) || []).length;
 
-  if (hasCustomerData && tableBlocks >= 2) {
+  if (hasCustomerData) {
     return { passed: true, feedback: '' };
   }
 
-  if (hasCustomerData) {
+  if (variables.df && variables.df.type === 'DataFrame') {
     return {
       passed: false,
-      feedback: "Good — you showed some data. Maya asked for both the last rows (tail) and a random sample. Try both.",
+      feedback: "The DataFrame is loaded. Now inspect a random sample of 5 rows using df.sample(5).",
     };
   }
 
   return {
     passed: false,
-    feedback: "Show the last few rows with tail() and a random sample with sample(5).",
+    feedback: "Load the customer data first, then call df.sample(5) to inspect a random sample of rows.",
   };
 }
 
@@ -237,7 +237,7 @@ export const level1Validators = {
   validateShape,
   validateColumns,
   validateDtypes,
-  validateTailSample,
+  validateSample,
   validateDescribe,
   validateFirstWeekChallenge,
 };

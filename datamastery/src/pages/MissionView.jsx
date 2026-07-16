@@ -38,6 +38,7 @@ function MissionView() {
   const [code, setCode] = useState('');
   const [challengeStatesReached, setChallengeStatesReached] = useState([]);
   const [earnedDPState, setEarnedDPState] = useState(null);
+  const [levelCompleted, setLevelCompleted] = useState(false);
 
   const messageIdRef = useRef(0);
   const nextMsgId = () => `msg-${++messageIdRef.current}`;
@@ -85,6 +86,11 @@ function MissionView() {
         if (updates.earnedDP !== undefined) setEarnedDPState(updates.earnedDP);
         if (updates.challengeStatesReached !== undefined) {
           setChallengeStatesReached(updates.challengeStatesReached);
+        }
+        if (updates.levelCompleted !== undefined) {
+          setTimeout(() => {
+            setLevelCompleted(updates.levelCompleted);
+          }, 3500);
         }
       },
       addMessages,
@@ -279,6 +285,32 @@ function MissionView() {
           />
         </div>
       </div>
+      {levelCompleted && (
+        <div className="level-complete-overlay" id="level-complete-modal">
+          <div className="level-complete-card">
+            <div className="level-complete-card__badge">🏆</div>
+            <h2 className="level-complete-card__title">Level Complete!</h2>
+            <p className="level-complete-card__subtitle">You survived your first week at NovaMetrics.</p>
+            <div className="level-complete-card__divider" />
+            <p className="level-complete-card__achievement">
+              You inspected, sized, verified, and statistically summarized files like a professional. Maya promoted you!
+            </p>
+            <div className="level-complete-card__promo">
+              <span className="level-complete-card__promo-icon">⚡</span>
+              <span className="level-complete-card__promo-text">
+                Promoted to: <strong>Data Quality Team</strong>
+              </span>
+            </div>
+            <button
+              className="level-complete-card__btn"
+              onClick={() => navigate('/dashboard')}
+              id="promotion-confirm-btn"
+            >
+              Advance to Level 2
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

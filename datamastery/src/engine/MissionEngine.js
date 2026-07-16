@@ -149,7 +149,12 @@ export class MissionEngine {
       SaveSystem.saveProgress(progress);
       SaveSystem.saveCode(this.levelId, this.subLevelId, codeToRun);
 
-      this.updateUIState({ earnedDP: rewards.earnedDP });
+      const levelCompleted = progress.levels[this.levelId].status === 'completed';
+
+      this.updateUIState({ 
+        earnedDP: rewards.earnedDP,
+        levelCompleted
+      });
     } else if (validationResult.reachedStates && validationResult.reachedStates.length > 0) {
       // Challenge Mode intermediate progression
       const progress = SaveSystem.getProgress() || ProgressionEngine.initializeProgress(this.levelsList);

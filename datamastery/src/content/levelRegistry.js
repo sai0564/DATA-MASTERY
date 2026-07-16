@@ -2,11 +2,12 @@
  * Level Registry — Central registry for levels and validation hook initialization.
  */
 import { level1 } from './levels/level-1.js';
+import { level2 } from './levels/level-2.js';
 import { level1Validators } from './validators/level1.js';
 import { ValidationEngine } from '../engine/ValidationEngine.js';
 
 // Register all levels
-export const levels = [level1];
+export const levels = [level1, level2];
 
 // Auto-register validators in the ValidationEngine
 ValidationEngine.registerValidators(level1Validators);
