@@ -24,6 +24,9 @@ function ChatPanel({ messages, mentor = 'maya', onDatasetPreview }) {
             isTyping={msg.isTyping}
             timestamp={msg.timestamp}
             onDatasetPreview={onDatasetPreview}
+            isMissionCard={msg.isMissionCard}
+            isChallengeNotification={msg.isChallengeNotification}
+            mission={msg.mission}
           />
         ))}
         <div ref={bottomRef} />

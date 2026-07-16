@@ -116,7 +116,7 @@ function MissionView() {
       if (subLevelId === '1.2') {
         memoryMessages.push("Now that you know how to load and preview a DataFrame, let's check its shape.");
       } else if (subLevelId === '1.3') {
-        memoryMessages.push("Yesterday we checked the size of our dataset. Now let's see what columns we are tracking.");
+        memoryMessages.push("Yesterday we checked the shape of our dataset. Now let's see what columns we are tracking.");
       } else if (subLevelId === '1.4') {
         memoryMessages.push("You already know how to inspect the dimensions and column headers. Next is verifying the data types.");
       } else if (subLevelId === '1.5') {
@@ -130,6 +130,30 @@ function MissionView() {
 
     const mentor = mission.mentor || level.mentor || 'maya';
     const isChallenge = mission.type === 'challenge';
+
+    // Initialize messages list with a static objective card or challenge mode alert banner
+    const initialMessages = [];
+    if (isChallenge) {
+      initialMessages.push({
+        id: 'challenge-card',
+        sender: 'system',
+        isChallengeNotification: true,
+        text: `Explore the dataset independently without step-by-step guidance. Standard hints are available, but each hint costs 20 DP.`
+      });
+    } else {
+      initialMessages.push({
+        id: 'mission-card',
+        sender: 'system',
+        isMissionCard: true,
+        mission: {
+          title: mission.title,
+          subtitle: mission.subtitle,
+          learningObjective: mission.learningObjective,
+          estDuration: mission.estDuration
+        }
+      });
+    }
+    setMessages(initialMessages);
 
     if (!isChallenge) {
       setPhase(GUIDED_PHASE.SITUATION);

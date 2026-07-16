@@ -2,10 +2,60 @@ import './ChatBubble.css';
 
 /**
  * Renders individual chat bubbles.
- * Parses text contents to support block code, inline code, and dataset file attachments.
+ * Parses text contents to support block code, inline code, dataset file attachments,
+ * mission preview cards, and challenge alerts.
  */
-function ChatBubble({ sender, text, isTyping, timestamp, onDatasetPreview }) {
+function ChatBubble({ 
+  sender, 
+  text, 
+  isTyping, 
+  timestamp, 
+  onDatasetPreview, 
+  isMissionCard = false, 
+  isChallengeNotification = false, 
+  mission = null 
+}) {
   const isMentor = sender === 'maya' || sender === 'leo';
+
+  // --- Render custom Mission Overview Card inside chat ---
+  if (isMissionCard && mission) {
+    return (
+      <div className="chat-bubble chat-bubble--system chat-bubble--mission-card animate-fade-in-scale">
+        <div className="chat-mission-card">
+          <div className="chat-mission-card__header">
+            <span className="chat-mission-card__badge">🎯 Assignment Objective</span>
+            <h4 className="chat-mission-card__title">{mission.title}</h4>
+          </div>
+          <div className="chat-mission-card__body">
+            <p className="chat-mission-card__subtitle">{mission.subtitle}</p>
+            <div className="chat-mission-card__detail">
+              <strong>Goal:</strong> {mission.learningObjective}
+            </div>
+            {mission.estDuration && (
+              <div className="chat-mission-card__duration">
+                ⏱️ Est. Duration: {mission.estDuration}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Render custom Challenge Notification Card inside chat ---
+  if (isChallengeNotification) {
+    return (
+      <div className="chat-bubble chat-bubble--system chat-bubble--challenge-notification animate-fade-in-scale">
+        <div className="chat-challenge-notification">
+          <span className="chat-challenge-notification__icon">⚠️</span>
+          <div className="chat-challenge-notification__content">
+            <h4 className="chat-challenge-notification__title">Performance Review Challenge</h4>
+            <p className="chat-challenge-notification__text">{text}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Check for file attachment references (e.g., 📎 customers.csv)
   const attachmentRegex = /📎\s*(\S+\.csv)/;
