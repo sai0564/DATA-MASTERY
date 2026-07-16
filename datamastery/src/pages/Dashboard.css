@@ -1,0 +1,247 @@
+/* ==========================================================================
+   Dashboard Page — Level-based layout
+   ========================================================================== */
+
+.dashboard {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-6) var(--space-16);
+}
+
+/* ---------- Header ---------- */
+.dashboard__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: var(--space-10);
+  padding-bottom: var(--space-8);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dashboard__title {
+  font-size: var(--text-4xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: var(--space-2);
+}
+
+.dashboard__subtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.dashboard__stats {
+  display: flex;
+  gap: var(--space-8);
+  flex-shrink: 0;
+}
+
+.dashboard__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dashboard__stat-value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+/* ---------- Level Cards ---------- */
+.dashboard__levels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dashboard__level-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition:
+    border-color var(--transition-base),
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    background var(--transition-base);
+  width: 100%;
+  position: relative;
+}
+
+.dashboard__level-card:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(99, 102, 241, 0.1);
+}
+
+.dashboard__level-card--locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dashboard__level-card--locked:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-subtle);
+}
+
+.dashboard__level-card--active {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: linear-gradient(
+    135deg,
+    var(--bg-surface) 0%,
+    rgba(99, 102, 241, 0.05) 100%
+  );
+}
+
+.dashboard__level-card--completed {
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* ---------- Icon ---------- */
+.dashboard__level-icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* ---------- Info ---------- */
+.dashboard__level-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard__level-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.dashboard__level-number {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--accent-glow);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dashboard__level-mentor {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.dashboard__level-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.dashboard__level-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+}
+
+/* ---------- Progress bar ---------- */
+.dashboard__level-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dashboard__progress-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  overflow: hidden;
+  max-width: 200px;
+}
+
+.dashboard__progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--accent-gradient);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard__progress-text {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- Lock / Arrow / Check ---------- */
+.dashboard__level-lock,
+.dashboard__level-arrow,
+.dashboard__level-check {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.dashboard__level-arrow {
+  color: var(--accent-primary);
+  transition: transform var(--transition-fast);
+}
+
+.dashboard__level-card:hover .dashboard__level-arrow {
+  transform: translateX(4px);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: var(--space-6) var(--space-4) var(--space-12);
+  }
+
+  .dashboard__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-6);
+  }
+
+  .dashboard__title {
+    font-size: var(--text-3xl);
+  }
+
+  .dashboard__level-card {
+    padding: var(--space-5);
+  }
+
+  .dashboard__level-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+  }
+}

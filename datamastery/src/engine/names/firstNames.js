@@ -1,0 +1,15 @@
+export const FIRST_NAMES = [
+  'James','Mary','Robert','Patricia','John','Jennifer','Michael','Linda',
+  'David','Elizabeth','William','Barbara','Richard','Susan','Joseph','Jessica',
+  'Thomas','Sarah','Christopher','Karen','Charles','Lisa','Daniel','Nancy',
+  'Matthew','Betty','Anthony','Margaret','Mark','Sandra','Donald','Ashley',
+  'Steven','Dorothy','Paul','Kimberly','Andrew','Emily','Joshua','Donna',
+  'Kenneth','Michelle','Kevin','Carol','Brian','Amanda','George','Melissa',
+  'Timothy','Deborah','Ronald','Stephanie','Edward','Rebecca','Jason','Sharon',
+  'Jeffrey','Laura','Ryan','Cynthia','Jacob','Kathleen','Gary','Amy',
+  'Nicholas','Angela','Eric','Shirley','Jonathan','Anna','Stephen','Brenda',
+  'Larry','Pamela','Justin','Emma','Scott','Nicole','Brandon','Helen',
+  'Benjamin','Samantha','Samuel','Katherine','Raymond','Christine','Gregory',
+  'Debra','Frank','Rachel','Alexander','Carolyn','Patrick','Janet','Jack',
+  'Catherine','Dennis','Maria','Jerry','Heather','Tyler','Diane',
+];

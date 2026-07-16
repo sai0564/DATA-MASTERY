@@ -1,0 +1,202 @@
+.level-detail {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.level-detail--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 1rem;
+  color: var(--text-secondary, #a0a0b0);
+}
+
+.level-detail__back {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+  color: var(--accent, #818cf8);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+.level-detail__back:hover {
+  opacity: 0.8;
+}
+
+/* ── Header ─────────────────────────────── */
+.level-detail__header {
+  margin-bottom: 2.5rem;
+}
+
+.level-detail__header-content {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.level-detail__icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.level-detail__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #e8e8f0);
+  margin: 0 0 0.25rem;
+}
+
+.level-detail__desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #a0a0b0);
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+}
+
+.level-detail__meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted, #6b6b80);
+}
+
+.level-detail__progress-bar {
+  height: 4px;
+  background: var(--surface-2, #1a1e2e);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.level-detail__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #818cf8, #a78bfa);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* ── Path ───────────────────────────────── */
+.level-detail__path {
+  display: flex;
+  flex-direction: column;
+}
+
+.level-detail__step-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.level-detail__connector {
+  width: 2px;
+  height: 24px;
+  margin-left: 28px;
+  background: var(--surface-2, #1a1e2e);
+  transition: background 0.3s;
+}
+.level-detail__connector--completed {
+  background: #818cf8;
+}
+.level-detail__connector--active {
+  background: linear-gradient(to bottom, #818cf8, var(--surface-2, #1a1e2e));
+}
+
+.level-detail__step {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--border, #1e2235);
+  background: var(--surface-1, #12152080);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.25s ease;
+  width: 100%;
+}
+
+.level-detail__step:hover:not(:disabled) {
+  background: var(--surface-2, #1a1e2e);
+  border-color: rgba(129, 140, 248, 0.3);
+  transform: translateX(4px);
+}
+
+.level-detail__step--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.level-detail__step--locked:hover {
+  transform: none;
+  border-color: var(--border, #1e2235);
+  background: var(--surface-1, #12152080);
+}
+
+.level-detail__step--active {
+  border-color: rgba(129, 140, 248, 0.5);
+  background: rgba(129, 140, 248, 0.06);
+}
+
+.level-detail__step--completed {
+  opacity: 0.7;
+}
+
+.level-detail__step--challenge {
+  border-color: rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.04);
+  margin-top: 0.5rem;
+}
+.level-detail__step--challenge.level-detail__step--active {
+  border-color: rgba(251, 191, 36, 0.6);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+/* Step indicator */
+.level-detail__step-indicator {
+  font-size: 1.25rem;
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Step content */
+.level-detail__step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.level-detail__step-id {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b80);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.125rem;
+}
+
+.level-detail__step-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary, #e8e8f0);
+  margin: 0;
+}
+
+.level-detail__step-dp {
+  font-size: 0.75rem;
+  color: #818cf8;
+  font-weight: 600;
+}
+
+.level-detail__step-action {
+  font-size: 0.75rem;
+  color: #818cf8;
+  font-weight: 600;
+}
+
+.level-detail__step-arrow {
+  font-size: 1.125rem;
+  color: var(--accent, #818cf8);
+  flex-shrink: 0;
+}
