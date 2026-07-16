@@ -69,17 +69,23 @@ function LevelDetail() {
         </div>
       </div>
 
-      {/* Sub-level path */}
+      {/* Sub-level roadmap */}
       <div className="level-detail__path">
         {level.subLevels.map((sub, index) => {
           const status = getSubStatus(sub);
           const isChallenge = sub.type === 'challenge';
           const dp = levelProgress?.subLevels[sub.id]?.dp || 0;
+          const duration = sub.estDuration || '3m';
+          
+          const basePoints = sub.rewards?.basePoints || sub.points?.base || 50;
+          const bonusPoints = sub.rewards?.bonusPoints || sub.points?.bonus || 10;
 
           return (
             <div key={sub.id} className="level-detail__step-wrapper">
               {index > 0 && (
-                <div className={`level-detail__connector level-detail__connector--${status}`} />
+                <div className={`level-detail__connector-node level-detail__connector-node--${status}`}>
+                  <span className="level-detail__connector-arrow">↓</span>
+                </div>
               )}
               <button
                 className={`level-detail__step level-detail__step--${status} ${isChallenge ? 'level-detail__step--challenge' : ''} animate-fade-in-up stagger-${Math.min(index + 1, 8)}`}
@@ -89,22 +95,32 @@ function LevelDetail() {
               >
                 <div className="level-detail__step-indicator">
                   {status === 'completed' && '✅'}
-                  {status === 'active' && (isChallenge ? '🏆' : '▶')}
+                  {status === 'active' && (isChallenge ? '⭐' : '▶')}
                   {status === 'locked' && '🔒'}
                 </div>
                 <div className="level-detail__step-content">
-                  <div className="level-detail__step-id">
-                    {isChallenge ? 'Level Challenge' : `${sub.id}`}
+                  <div className="level-detail__step-meta">
+                    <span className="level-detail__step-id">
+                      {isChallenge ? 'Final Challenge' : `Mission ${sub.id}`}
+                    </span>
+                    <span className="level-detail__step-duration">⏱️ {duration}</span>
                   </div>
                   <h3 className="level-detail__step-title">{sub.title}</h3>
-                  {status === 'completed' && dp > 0 && (
-                    <span className="level-detail__step-dp">+{dp} DP</span>
-                  )}
-                  {status === 'active' && (
-                    <span className="level-detail__step-action">
-                      {isChallenge ? 'Start Challenge' : 'Start'}
-                    </span>
-                  )}
+                  <div className="level-detail__step-footer">
+                    {status === 'completed' ? (
+                      <span className="level-detail__step-dp-earned">Earned: +{dp} DP</span>
+                    ) : (
+                      <div className="level-detail__step-rewards">
+                        <span className="badge-base">+{basePoints} DP</span>
+                        {bonusPoints > 0 && <span className="badge-bonus">+{bonusPoints} Bonus</span>}
+                      </div>
+                    )}
+                    {status === 'active' && (
+                      <span className="level-detail__step-action">
+                        {isChallenge ? 'Begin Challenge' : 'Start Mission'}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {status === 'active' && (
                   <div className="level-detail__step-arrow">→</div>

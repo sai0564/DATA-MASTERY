@@ -7,6 +7,7 @@ import './Dashboard.css';
 function Dashboard() {
   const navigate = useNavigate();
   const progress = loadProgress();
+  const achievements = progress.achievements || {};
 
   const totalDP = progress.totalDP || 0;
   const totalCompleted = progress.completedCount || 0;
@@ -91,8 +92,69 @@ function Dashboard() {
           );
         })}
       </div>
+
+      {/* Achievements Section */}
+      <div className="dashboard__achievements animate-fade-in-up stagger-3">
+        <h2 className="dashboard__achievements-title">Achievements Showcase</h2>
+        <div className="dashboard__achievements-grid">
+          {Object.entries(ACHIEVEMENT_REGISTRY).map(([key, details]) => {
+            const unlocked = !!achievements[key]?.unlocked;
+            return (
+              <div 
+                key={key} 
+                className={`achievement-card achievement-card--${unlocked ? 'unlocked' : 'locked'}`}
+                id={`achievement-${key}`}
+              >
+                <div className="achievement-card__icon">{details.icon}</div>
+                <div className="achievement-card__info">
+                  <h4 className="achievement-card__title">{details.title}</h4>
+                  <p className="achievement-card__desc">{details.description}</p>
+                  {unlocked && achievements[key]?.unlockedAt && (
+                    <span className="achievement-card__date">
+                      Unlocked {new Date(achievements[key].unlockedAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
+
+const ACHIEVEMENT_REGISTRY = {
+  'first-run': {
+    title: 'First Successful Run',
+    description: 'You loaded your first dataset and printed it using Pandas!',
+    icon: '🚀'
+  },
+  'no-hints': {
+    title: 'No Hint Completion',
+    description: 'Completed a sub-level without using any hints.',
+    icon: '🧠'
+  },
+  'perfect-week': {
+    title: 'Perfect First Week',
+    description: 'Completed all Level 1 guided sub-levels without using a single hint.',
+    icon: '⭐'
+  },
+  'performance-review': {
+    title: 'First Performance Review',
+    description: 'Successfully completed the Level 1 challenge and earned a promotion.',
+    icon: '👔'
+  },
+  'fast-learner': {
+    title: 'Fast Learner',
+    description: 'Solved a sub-level on your very first try.',
+    icon: '⚡'
+  },
+  'curious-analyst': {
+    title: 'Curious Analyst',
+    description: 'Attempted a sub-level 4+ times or viewed all hints.',
+    icon: '🔍'
+  }
+};
 
 export default Dashboard;

@@ -20,7 +20,23 @@ export const level1 = {
       title: 'Your First Dataset',
       subtitle: 'Loading and previewing a DataFrame',
       learningObjective: 'Learn basic DataFrame loading with pd.read_csv() and previewing with df.head()',
+      estDuration: '3m',
       
+      datasetCard: {
+        filename: 'customers.csv',
+        rows: '1,247',
+        columns: '9',
+        department: 'Marketing Analytics',
+        description: 'Raw CRM customer profiles containing contact info, geographical region, and sign-up timestamp.',
+        difficulty: 'Beginner'
+      },
+
+      summary: {
+        concepts: ['pd.read_csv()', 'df.head()', 'Previewing datasets'],
+        why: 'Professional analysts inspect the top rows of data first to verify column layout and confirm files loaded correctly before querying them.',
+        next: 'Check the exact size and dimensions of the dataset.'
+      },
+
       // Business situation introduction messages
       businessSituation: [
         "Morning! Welcome to the analytics team. 👋",
@@ -99,6 +115,22 @@ export const level1 = {
       title: 'How Big Is This File?',
       subtitle: 'DataFrame size and dimensions',
       learningObjective: 'Inspect rows and columns count using df.shape attribute',
+      estDuration: '3m',
+
+      datasetCard: {
+        filename: 'customers.csv',
+        rows: '1,247',
+        columns: '9',
+        department: 'Marketing Analytics',
+        description: 'Raw CRM customer profiles containing contact info, geographical region, and sign-up timestamp.',
+        difficulty: 'Beginner'
+      },
+
+      summary: {
+        concepts: ['df.shape', 'DataFrame dimensions'],
+        why: 'Knowing the exact dimensions of your dataset helps verify completeness and spot issues like truncated exports or lost columns.',
+        next: 'Identify what columns/fields are actually tracked in this database.'
+      },
       
       businessSituation: [
         "Good — you've seen the first few rows.",
@@ -173,6 +205,22 @@ export const level1 = {
       title: 'What Fields Are We Tracking?',
       subtitle: 'DataFrame column names',
       learningObjective: 'Inspect DataFrame columns list with df.columns attribute',
+      estDuration: '3m',
+
+      datasetCard: {
+        filename: 'customers.csv',
+        rows: '1,247',
+        columns: '9',
+        department: 'Marketing Analytics',
+        description: 'Raw CRM customer profiles containing contact info, geographical region, and sign-up timestamp.',
+        difficulty: 'Beginner'
+      },
+
+      summary: {
+        concepts: ['df.columns', 'Inspecting column headers'],
+        why: 'Printing the columns is the first step in planning which variables to use for filters, aggregations, and business metrics.',
+        next: 'Check the data types detected by Pandas for these columns.'
+      },
       
       businessSituation: [
         "We know how many rows we have.",
@@ -245,6 +293,22 @@ export const level1 = {
       title: 'What Types Did Pandas Detect?',
       subtitle: 'Data types detection',
       learningObjective: 'Inspect column data types with df.dtypes or df.info()',
+      estDuration: '4m',
+
+      datasetCard: {
+        filename: 'customers.csv',
+        rows: '1,247',
+        columns: '9',
+        department: 'Marketing Analytics',
+        description: 'Raw CRM customer profiles containing contact info, geographical region, and sign-up timestamp.',
+        difficulty: 'Beginner'
+      },
+
+      summary: {
+        concepts: ['df.dtypes', 'df.info()', 'Data types (int64, float64, object)'],
+        why: 'Correct data types are critical. For example, dates loaded as objects (strings) prevent date filters and timeline math.',
+        next: 'Check random rows in the dataset for anomalies.'
+      },
       
       businessSituation: [
         "One thing I always check early — the data types.",
@@ -319,6 +383,22 @@ export const level1 = {
       title: 'Inspect Random Records',
       subtitle: 'Inspecting random rows of a DataFrame',
       learningObjective: 'Inspect a random sample of rows using the df.sample() method',
+      estDuration: '3m',
+
+      datasetCard: {
+        filename: 'customers.csv',
+        rows: '1,247',
+        columns: '9',
+        department: 'Marketing Analytics',
+        description: 'Raw CRM customer profiles containing contact info, geographical region, and sign-up timestamp.',
+        difficulty: 'Beginner'
+      },
+
+      summary: {
+        concepts: ['df.sample()', 'Random sampling'],
+        why: 'Inspecting only head() can lead to confirmation bias. Random sampling reveals anomalies hidden deep within the dataset.',
+        next: 'Compute standard statistical summaries of the data fields.'
+      },
       
       businessSituation: [
         "Here's something I learned the hard way.",
@@ -391,6 +471,22 @@ export const level1 = {
       title: 'Quick Dataset Summary',
       subtitle: 'Statistical summary of a DataFrame',
       learningObjective: 'Generate statistical descriptions with df.describe()',
+      estDuration: '4m',
+
+      datasetCard: {
+        filename: 'customers.csv',
+        rows: '1,247',
+        columns: '9',
+        department: 'Marketing Analytics',
+        description: 'Raw CRM customer profiles containing contact info, geographical region, and sign-up timestamp.',
+        difficulty: 'Beginner'
+      },
+
+      summary: {
+        concepts: ['df.describe()', 'Descriptive statistics'],
+        why: 'Describe summarizes means, ranges, mins, and maxes. You can immediately tell if columns have unreasonable ranges (like negative prices or ages).',
+        next: 'Prepare to explore a new file independently in your week-one performance review.'
+      },
       
       businessSituation: [
         "I'm about to go into a meeting.",
@@ -461,6 +557,22 @@ export const level1 = {
       title: 'First Week Performance Review',
       subtitle: 'Explore an unfamiliar dataset independently',
       learningObjective: 'Independently load, size-check, field-check, type-check, and summarize a new dataset',
+      estDuration: '10m',
+
+      datasetCard: {
+        filename: 'sales_sample.csv',
+        rows: '500',
+        columns: '6',
+        department: 'Sales & Operations',
+        description: 'First week sales transactions sample containing transaction IDs, products, quantities, prices, and timestamps.',
+        difficulty: 'Intermediate'
+      },
+
+      summary: {
+        concepts: ['Exploratory Data Analysis (EDA)', 'Notebook inspection flow'],
+        why: 'Applying your inspection stack (head, shape, columns, dtypes, describe) on raw files is the exact workflow of real data professionals.',
+        next: 'Advance to Level 2 and join the Data Quality team!'
+      },
       
       businessSituation: [
         "New file just came in.",
@@ -472,7 +584,7 @@ export const level1 = {
       
       datasets: {
         'sales_sample.csv': {
-          generator: 'customers',
+          generator: 'customers', // uses same generator structure but generates sales data internally
           count: 500,
           injections: [],
         },

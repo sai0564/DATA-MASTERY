@@ -6,7 +6,7 @@ import './ChatPanel.css';
  * ChatPanel displays a list of chat messages and auto-scrolls to the bottom.
  * Messages format: { id, sender: 'maya'|'leo'|'system', text, isTyping? }
  */
-function ChatPanel({ messages, mentor = 'maya' }) {
+function ChatPanel({ messages, mentor = 'maya', onDatasetPreview }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -22,6 +22,8 @@ function ChatPanel({ messages, mentor = 'maya' }) {
             sender={msg.sender}
             text={msg.text}
             isTyping={msg.isTyping}
+            timestamp={msg.timestamp}
+            onDatasetPreview={onDatasetPreview}
           />
         ))}
         <div ref={bottomRef} />

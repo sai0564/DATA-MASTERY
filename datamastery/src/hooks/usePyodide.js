@@ -46,6 +46,7 @@ export function usePyodide() {
             stdout: msg.stdout,
             stderr: msg.stderr,
             variables: msg.variables,
+            lastExpressionResult: msg.lastExpressionResult,
           });
           pendingRef.current = null;
         }

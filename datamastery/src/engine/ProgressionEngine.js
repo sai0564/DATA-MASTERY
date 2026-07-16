@@ -1,7 +1,7 @@
 import { SaveSystem } from './SaveSystem.js';
 
 /**
- * ProgressionEngine — Manages learner progression, unlocks, and gating.
+ * ProgressionEngine — Manages learner progression, unlocks, gating, and achievement verification.
  */
 export const ProgressionEngine = {
   /**
@@ -12,6 +12,14 @@ export const ProgressionEngine = {
       levels: {},
       totalDP: 0,
       completedCount: 0,
+      achievements: {
+        'first-run': { unlocked: false, unlockedAt: null },
+        'no-hints': { unlocked: false, unlockedAt: null },
+        'perfect-week': { unlocked: false, unlockedAt: null },
+        'performance-review': { unlocked: false, unlockedAt: null },
+        'fast-learner': { unlocked: false, unlockedAt: null },
+        'curious-analyst': { unlocked: false, unlockedAt: null }
+      }
     };
 
     levelsList.forEach((level, levelIdx) => {
@@ -69,7 +77,7 @@ export const ProgressionEngine = {
   },
 
   /**
-   * Process a sub-level completion and compute next unlocks.
+   * Process a sub-level completion and compute next unlocks & achievements.
    * Modifies progress in-place.
    *
    * @param {object} progress - The mutable progress object
@@ -79,13 +87,15 @@ export const ProgressionEngine = {
    * @param {number} hintsUsed - Number of hints used
    * @param {string} code - The code written by the learner
    * @param {array} levelsList - The full list of registered levels
+   * @param {number} attempts - Attempts taken to solve
+   * @returns {string[]} Newly unlocked achievement IDs
    */
-  completeSubLevel(progress, level, subLevelId, earnedDP, hintsUsed, code, levelsList) {
+  completeSubLevel(progress, level, subLevelId, earnedDP, hintsUsed, code, levelsList, attempts = 1) {
     const levelProg = progress.levels[level.id];
-    if (!levelProg) return;
+    if (!levelProg) return [];
 
     const subProg = levelProg.subLevels[subLevelId];
-    if (!subProg || subProg.completed) return;
+    if (!subProg || subProg.completed) return [];
 
     // 1. Mark completed
     subProg.completed = true;
@@ -96,6 +106,65 @@ export const ProgressionEngine = {
     progress.totalDP += earnedDP;
     progress.completedCount += 1;
 
+    // Initialize achievements helper block if missing from legacy saves
+    if (!progress.achievements) {
+      progress.achievements = {
+        'first-run': { unlocked: false, unlockedAt: null },
+        'no-hints': { unlocked: false, unlockedAt: null },
+        'perfect-week': { unlocked: false, unlockedAt: null },
+        'performance-review': { unlocked: false, unlockedAt: null },
+        'fast-learner': { unlocked: false, unlockedAt: null },
+        'curious-analyst': { unlocked: false, unlockedAt: null }
+      };
+    }
+
+    const newlyUnlocked = [];
+    const triggerUnlock = (id) => {
+      if (progress.achievements[id] && !progress.achievements[id].unlocked) {
+        progress.achievements[id].unlocked = true;
+        progress.achievements[id].unlockedAt = new Date().toISOString();
+        newlyUnlocked.push(id);
+      }
+    };
+
+    // --- Validate Achievements ---
+
+    // A. first-run
+    if (subLevelId === '1.1') {
+      triggerUnlock('first-run');
+    }
+
+    // B. no-hints
+    if (hintsUsed === 0) {
+      triggerUnlock('no-hints');
+    }
+
+    // C. fast-learner
+    if (attempts === 1) {
+      triggerUnlock('fast-learner');
+    }
+
+    // D. curious-analyst
+    if (attempts >= 4 || hintsUsed >= 3) {
+      triggerUnlock('curious-analyst');
+    }
+
+    // E. performance-review
+    if (subLevelId === '1.7') {
+      triggerUnlock('performance-review');
+    }
+
+    // F. perfect-week (all 1.1 to 1.6 completed without hints)
+    const guidedIds = ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6'];
+    const perfectWeekDone = guidedIds.every(gid => {
+      if (gid === subLevelId) return hintsUsed === 0;
+      const sp = levelProg.subLevels[gid];
+      return sp && sp.completed && sp.hintsUsed === 0;
+    });
+    if (perfectWeekDone) {
+      triggerUnlock('perfect-week');
+    }
+
     // 2. Determine unlocks within the current level
     const currentIdx = level.subLevels.findIndex((s) => s.id === subLevelId);
     if (currentIdx !== -1 && currentIdx < level.subLevels.length - 1) {
@@ -103,7 +172,6 @@ export const ProgressionEngine = {
       const nextSubProg = levelProg.subLevels[nextSub.id];
       
       if (nextSubProg) {
-        // If it requires previous missions
         if (nextSub.requires) {
           if (this.areRequirementsMet(progress, level.id, nextSub.requires)) {
             nextSubProg.unlocked = true;
@@ -114,7 +182,7 @@ export const ProgressionEngine = {
       }
     }
 
-    // 3. Check level completion (all sub-levels are completed)
+    // 3. Check level completion
     const allDone = level.subLevels.every((s) => !!levelProg.subLevels[s.id]?.completed);
     if (allDone) {
       levelProg.status = 'completed';
@@ -126,7 +194,6 @@ export const ProgressionEngine = {
         const nextLevelProg = progress.levels[nextLevel.id];
         if (nextLevelProg) {
           nextLevelProg.status = 'active';
-          // Unlock the first sub-level of the next level
           const firstSub = nextLevel.subLevels[0];
           if (firstSub && nextLevelProg.subLevels[firstSub.id]) {
             nextLevelProg.subLevels[firstSub.id].unlocked = true;
@@ -134,6 +201,8 @@ export const ProgressionEngine = {
         }
       }
     }
+
+    return newlyUnlocked;
   },
 
   /**

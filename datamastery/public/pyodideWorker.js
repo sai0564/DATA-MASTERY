@@ -6,66 +6,6 @@
 
 importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js');
 
-/**
- * Auto-display helper — emulates Jupyter/IPython behavior.
- *
- * If the last non-empty, non-comment line of the code is a bare expression
- * (not an assignment, import, def, class, for, while, if, with, try, etc.),
- * wraps it in `print(...)` so learners see output without needing explicit
- * print() calls. This is critical for a smooth learning experience where
- * students type `df.head()` and expect to see results.
- */
-function autoDisplayLastExpression(code) {
-  const lines = code.split('\n');
-
-  // Find the last non-empty, non-comment line
-  let lastIdx = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const trimmed = lines[i].trim();
-    if (trimmed && !trimmed.startsWith('#')) {
-      lastIdx = i;
-      break;
-    }
-  }
-
-  if (lastIdx === -1) return code;
-
-  const lastLine = lines[lastIdx];
-  const trimmedLast = lastLine.trim();
-
-  // Skip lines that are already print calls
-  if (trimmedLast.startsWith('print(') || trimmedLast.startsWith('print (')) {
-    return code;
-  }
-
-  // Skip statements (assignments, imports, control flow, etc.)
-  const statementPrefixes = [
-    'import ', 'from ', 'def ', 'class ', 'return ', 'yield ',
-    'for ', 'while ', 'if ', 'elif ', 'else:', 'try:', 'except',
-    'finally:', 'with ', 'raise ', 'assert ', 'pass', 'break',
-    'continue', 'del ', 'global ', 'nonlocal ', 'async ',
-  ];
-
-  for (const prefix of statementPrefixes) {
-    if (trimmedLast.startsWith(prefix)) return code;
-  }
-
-  // Skip assignments (=, +=, -=, etc.) — but allow == comparisons
-  if (/^[^=]+=(?!=)/.test(trimmedLast) && !trimmedLast.startsWith('print')) {
-    return code;
-  }
-
-  // Skip indented lines (inside blocks)
-  if (lastLine.startsWith(' ') || lastLine.startsWith('\t')) {
-    return code;
-  }
-
-  // It's a bare expression — wrap in print()
-  const indent = lastLine.match(/^(\s*)/)[1];
-  lines[lastIdx] = `${indent}print(${trimmedLast})`;
-  return lines.join('\n');
-}
-
 let pyodide = null;
 
 async function initPyodide() {
@@ -76,13 +16,79 @@ async function initPyodide() {
   self.postMessage({ type: 'loading', stage: 'packages', message: 'Installing Pandas & NumPy...' });
   await pyodide.loadPackage(['pandas', 'numpy']);
 
-  // Set up stdout/stderr capture infrastructure
+  // Set up stdout/stderr capture and Notebook cell execution helper
   pyodide.runPython(`
 import sys
 from io import StringIO
 import json
 import pandas as pd
 import numpy as np
+import ast
+
+def _dm_serialize_value(val):
+    if val is None:
+        return None
+    try:
+        if isinstance(val, pd.DataFrame):
+            df_display = val.head(20)
+            return {
+                'type': 'DataFrame',
+                'columns': [str(c) for c in df_display.columns],
+                'index': [str(i) for i in df_display.index],
+                'data': [[str(x) for x in row] for row in df_display.values.tolist()],
+                'shape': list(val.shape)
+            }
+        elif isinstance(val, pd.Series):
+            series_display = val.head(20)
+            return {
+                'type': 'Series',
+                'name': str(val.name) if val.name is not None else None,
+                'index': [str(i) for i in series_display.index],
+                'data': [str(x) for x in series_display.tolist()],
+                'dtype': str(val.dtype),
+                'shape': list(val.shape)
+            }
+        elif isinstance(val, np.ndarray):
+            return {
+                'type': 'ndarray',
+                'data': val.tolist(),
+                'shape': list(val.shape),
+                'dtype': str(val.dtype)
+            }
+        elif isinstance(val, (int, float, bool, str)):
+            return {
+                'type': 'scalar',
+                'value': val,
+                'value_type': type(val).__name__
+            }
+        else:
+            return {
+                'type': 'scalar',
+                'value': repr(val),
+                'value_type': type(val).__name__
+            }
+    except Exception as e:
+        return {
+            'type': 'scalar',
+            'value': f"<Serialization Error: {str(e)}>",
+            'value_type': 'error'
+        }
+
+def _dm_run_cell(code, globals_dict):
+    tree = ast.parse(code)
+    if not tree.body:
+        return None
+    
+    last_node = tree.body[-1]
+    if isinstance(last_node, ast.Expr):
+        if len(tree.body) > 1:
+            exec_tree = ast.Module(body=tree.body[:-1], type_ignores=[])
+            exec(compile(exec_tree, '<exec>', 'exec'), globals_dict)
+        expr_tree = ast.Expression(body=last_node.value)
+        return eval(compile(expr_tree, '<eval>', 'eval'), globals_dict)
+    else:
+        exec(compile(tree, '<exec>', 'exec'), globals_dict)
+        return None
   `);
 
   self.postMessage({ type: 'ready' });
@@ -91,9 +97,6 @@ import numpy as np
 async function loadDatasets(files) {
   const loaded = [];
   for (const file of files) {
-    // Support two formats:
-    // 1. { name: 'customers.csv', content: '...csv string...' } — from DatasetEngine
-    // 2. 'filename.csv' — legacy static file fetch
     if (typeof file === 'object' && file.name && file.content) {
       pyodide.FS.writeFile(file.name, file.content);
       loaded.push(file.name);
@@ -127,29 +130,33 @@ sys.stdout = _dm_stdout
 sys.stderr = _dm_stderr
     `);
 
-    // Auto-display the last expression (emulates Jupyter/IPython behavior).
-    // If the last non-empty, non-comment line is a bare expression (not an
-    // assignment, import, def, class, for, if, etc.), wrap it in print() so
-    // the learner sees output without needing explicit print().
-    const processedCode = autoDisplayLastExpression(code);
+    // Feed user code as global variable to run safely via AST compiler
+    pyodide.globals.set("_dm_code_to_run", code);
 
-    // Run the user's code
-    await pyodide.runPythonAsync(processedCode);
+    // Run the user's code using the AST execution cell helper
+    await pyodide.runPythonAsync(`
+_dm_last_val = _dm_run_cell(_dm_code_to_run, globals())
+_dm_serialized_last_val = _dm_serialize_value(_dm_last_val)
+    `);
 
-    // Capture output
+    // Capture stdout/stderr
     const stdout = pyodide.runPython('_dm_stdout.getvalue()');
     const stderr = pyodide.runPython('_dm_stderr.getvalue()');
 
-    // Restore stdout/stderr
+    // Restore standard streams
     pyodide.runPython(`
 sys.stdout = sys.__stdout__
 sys.stderr = sys.__stderr__
     `);
 
+    // Read notebook evaluation results
+    const lastResultJson = pyodide.runPython('json.dumps(_dm_serialized_last_val)');
+    const lastExpressionResult = JSON.parse(lastResultJson);
+
     // Extract user-defined variables for validation
     const variablesJson = pyodide.runPython(`
 _dm_vars = {}
-_dm_skip = {'sys', 'StringIO', 'json', 'pd', 'np', 'os', 'io',
+_dm_skip = {'sys', 'StringIO', 'json', 'pd', 'np', 'os', 'io', 'ast',
             'pandas', 'numpy', 'builtins', '__builtins__'}
 
 for _dm_name, _dm_val in list(globals().items()):
@@ -196,7 +203,7 @@ json.dumps(_dm_vars)
     `);
 
     const variables = JSON.parse(variablesJson);
-    self.postMessage({ type: 'result', stdout, stderr, variables });
+    self.postMessage({ type: 'result', stdout, stderr, variables, lastExpressionResult });
 
   } catch (error) {
     // Restore stdout/stderr on error
@@ -209,11 +216,10 @@ sys.stderr = sys.__stderr__
 
     // Clean up Python traceback for display
     let traceback = error.message || String(error);
-    // Extract just the relevant Python error
-    const lines = traceback.split('\\n');
-    const pyErrorIdx = lines.findIndex(l => l.includes('File "<exec>"'));
+    const lines = traceback.split('\n');
+    const pyErrorIdx = lines.findIndex(l => l.includes('File "<exec>"') || l.includes('File "<string>"'));
     if (pyErrorIdx >= 0) {
-      traceback = lines.slice(pyErrorIdx).join('\\n');
+      traceback = lines.slice(pyErrorIdx).join('\n');
     }
 
     self.postMessage({ type: 'error', message: traceback, traceback });
@@ -224,7 +230,7 @@ function resetNamespace() {
   if (!pyodide) return;
   pyodide.runPython(`
 for _dm_name in list(globals()):
-    if not _dm_name.startswith('_') and _dm_name not in ('sys','StringIO','json','pd','np','pandas','numpy'):
+    if not _dm_name.startswith('_') and _dm_name not in ('sys','StringIO','json','pd','np','pandas','numpy','ast'):
         del globals()[_dm_name]
   `);
   self.postMessage({ type: 'reset-done' });

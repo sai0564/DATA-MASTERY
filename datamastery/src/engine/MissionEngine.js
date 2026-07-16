@@ -135,14 +135,15 @@ export class MissionEngine {
       // 2. Load progress & compute new unlocks using ProgressionEngine
       const progress = SaveSystem.getProgress() || ProgressionEngine.initializeProgress(this.levelsList);
       
-      ProgressionEngine.completeSubLevel(
+      const newlyUnlocked = ProgressionEngine.completeSubLevel(
         progress,
         this.level,
         this.subLevelId,
         rewards.earnedDP,
         hintsUsed,
         codeToRun,
-        this.levelsList
+        this.levelsList,
+        this.attempts
       );
 
       // 3. Save progress via SaveSystem
@@ -153,7 +154,8 @@ export class MissionEngine {
 
       this.updateUIState({ 
         earnedDP: rewards.earnedDP,
-        levelCompleted
+        levelCompleted,
+        newlyUnlocked
       });
     } else if (validationResult.reachedStates && validationResult.reachedStates.length > 0) {
       // Challenge Mode intermediate progression
