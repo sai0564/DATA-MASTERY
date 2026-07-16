@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getLevel } from '../data/levelRegistry.js';
+import { getLevel } from '../content/levelRegistry.js';
 import { getLevelStats, loadProgress } from '../stores/progressStore.js';
 import { MENTORS } from '../utils/constants.js';
 import './LevelDetail.css';

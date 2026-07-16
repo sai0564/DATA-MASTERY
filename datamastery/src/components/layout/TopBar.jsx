@@ -1,6 +1,6 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { getTotalDP } from '../../stores/progressStore.js';
-import { getSubLevel } from '../../data/levelRegistry.js';
+import { getSubLevel } from '../../content/levelRegistry.js';
 import { MENTORS } from '../../utils/constants.js';
 import './TopBar.css';
 

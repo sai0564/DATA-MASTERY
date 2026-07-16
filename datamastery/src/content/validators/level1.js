@@ -4,25 +4,20 @@
  * Each validator is a function that receives:
  *   { stdout, stderr, variables, error }
  * and returns:
- *   { passed: boolean, feedback: string, templateVars?: object }
- *
- * templateVars are used to interpolate mentor responses (e.g. {{shape_0}}).
+ *   { passed: boolean, feedback: string, templateVars?: object, reachedStates?: string[], currentState?: string, nextState?: string }
  */
 
 // ─── 1.1 — Your First Dataset ──────────────────────────────────────
 export function validateHead({ stdout, variables }) {
-  // Accept if stdout contains a DataFrame-like table output (column headers from customers)
   const hasCustomerColumns =
     stdout.includes('customer_id') ||
     stdout.includes('first_name') ||
     stdout.includes('email');
 
-  // Accept if a DataFrame variable exists and head was likely called
   if (hasCustomerColumns) {
     return { passed: true, feedback: '' };
   }
 
-  // Check if they at least loaded the DataFrame
   if (variables.df && variables.df.type === 'DataFrame') {
     return {
       passed: false,
@@ -38,7 +33,6 @@ export function validateHead({ stdout, variables }) {
 
 // ─── 1.2 — How Big Is This File? ───────────────────────────────────
 export function validateShape({ stdout, variables }) {
-  // Check if shape was printed
   const shapeMatch = stdout.match(/\(?\s*(\d+)\s*,\s*(\d+)\s*\)?/);
   if (shapeMatch) {
     const rows = parseInt(shapeMatch[1], 10);
@@ -50,7 +44,6 @@ export function validateShape({ stdout, variables }) {
     };
   }
 
-  // Check if they printed just the row count
   if (variables.df && variables.df.type === 'DataFrame') {
     const [rows, cols] = variables.df.shape;
     if (stdout.includes(String(rows))) {
@@ -74,7 +67,6 @@ export function validateShape({ stdout, variables }) {
 
 // ─── 1.3 — What Fields Are We Tracking? ─────────────────────────────
 export function validateColumns({ stdout, variables }) {
-  // Accept if column names appear in stdout
   const hasColumns =
     stdout.includes('customer_id') &&
     (stdout.includes('first_name') || stdout.includes('email') || stdout.includes('age'));
@@ -98,7 +90,6 @@ export function validateColumns({ stdout, variables }) {
 
 // ─── 1.4 — What Types Did Pandas Detect? ────────────────────────────
 export function validateDtypes({ stdout }) {
-  // Accept if dtype information appears in output
   const hasDtypeInfo =
     stdout.includes('int64') ||
     stdout.includes('float64') ||
@@ -117,13 +108,7 @@ export function validateDtypes({ stdout }) {
 
 // ─── 1.5 — Don't Only Look at the Top ──────────────────────────────
 export function validateTailSample({ stdout }) {
-  // We need evidence they used both tail() and sample()
-  // tail() would show the last rows — hard to detect directly,
-  // but if we see multiple DataFrame outputs, that's good enough
   const hasCustomerData = stdout.includes('customer_id') || stdout.includes('CUST-');
-
-  // Count how many times we see DataFrame-like output
-  // (multiple head/tail/sample calls produce separate table blocks)
   const tableBlocks = (stdout.match(/customer_id/g) || []).length;
 
   if (hasCustomerData && tableBlocks >= 2) {
@@ -145,7 +130,6 @@ export function validateTailSample({ stdout }) {
 
 // ─── 1.6 — Give Me the Quick Picture ────────────────────────────────
 export function validateDescribe({ stdout }) {
-  // describe() output includes statistical labels
   const hasStats =
     (stdout.includes('mean') || stdout.includes('avg')) &&
     (stdout.includes('min') || stdout.includes('max') || stdout.includes('std'));
@@ -154,7 +138,6 @@ export function validateDescribe({ stdout }) {
     return { passed: true, feedback: '' };
   }
 
-  // Partial: they have count but not full describe
   if (stdout.includes('count')) {
     return {
       passed: false,
@@ -172,7 +155,6 @@ export function validateDescribe({ stdout }) {
 export function validateFirstWeekChallenge({ stdout, variables }) {
   const reachedStates = [];
 
-  // State 1: Loaded the file
   const hasDataFrame = Object.values(variables).some(
     v => v.type === 'DataFrame'
   );
@@ -180,13 +162,11 @@ export function validateFirstWeekChallenge({ stdout, variables }) {
     reachedStates.push('loaded');
   }
 
-  // State 2: Checked shape / size
   const shapePattern = /\(\s*\d+\s*,\s*\d+\s*\)/;
   if (shapePattern.test(stdout) || stdout.includes('shape') || stdout.includes('500')) {
     reachedStates.push('checked-size');
   }
 
-  // State 3: Checked columns
   const hasColumnsOutput =
     stdout.includes('customer_id') ||
     stdout.includes('columns') ||
@@ -195,7 +175,6 @@ export function validateFirstWeekChallenge({ stdout, variables }) {
     reachedStates.push('checked-columns');
   }
 
-  // State 4: Checked types
   const hasDtypes =
     stdout.includes('int64') ||
     stdout.includes('float64') ||
@@ -205,7 +184,6 @@ export function validateFirstWeekChallenge({ stdout, variables }) {
     reachedStates.push('checked-types');
   }
 
-  // State 5: Generated summary
   const hasSummary =
     stdout.includes('mean') &&
     (stdout.includes('std') || stdout.includes('min') || stdout.includes('max'));
@@ -213,14 +191,12 @@ export function validateFirstWeekChallenge({ stdout, variables }) {
     reachedStates.push('summarized');
   }
 
-  // Determine the highest state reached
   const stateOrder = ['loaded', 'checked-size', 'checked-columns', 'checked-types', 'summarized'];
   const highestIdx = stateOrder.reduce((max, state, idx) => {
     return reachedStates.includes(state) ? idx : max;
   }, -1);
 
   if (highestIdx === stateOrder.length - 1) {
-    // All states reached
     return {
       passed: true,
       feedback: '',
@@ -256,7 +232,6 @@ export function validateFirstWeekChallenge({ stdout, variables }) {
   };
 }
 
-// Validator registry
 export const level1Validators = {
   validateHead,
   validateShape,

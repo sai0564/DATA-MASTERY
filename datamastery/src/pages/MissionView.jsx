@@ -1,14 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePyodideContext } from '../context/PyodideContext.jsx';
-import { getSubLevel, getNextSubLevel } from '../data/levelRegistry.js';
-import { level1Validators } from '../data/validators/level1.js';
+import { getSubLevel, getNextSubLevel, levels } from '../content/levelRegistry.js';
 import { DatasetEngine } from '../engine/DatasetEngine.js';
-import {
-  completeSubLevel,
-  updateChallengeState,
-  loadProgress,
-} from '../stores/progressStore.js';
+import { MissionEngine } from '../engine/MissionEngine.js';
+import { RewardEngine } from '../engine/RewardEngine.js';
 import { MENTORS, GUIDED_PHASE, CHALLENGE_PHASE, POINTS } from '../utils/constants.js';
 import ChatPanel from '../components/chat/ChatPanel.jsx';
 import CodeEditor from '../components/editor/CodeEditor.jsx';
@@ -19,9 +15,6 @@ import './MissionView.css';
 // Typing animation delays
 const TYPING_DELAY = 600;
 const MESSAGE_DELAY = 900;
-
-// All validators (add more registries as levels are built)
-const ALL_VALIDATORS = { ...level1Validators };
 
 function MissionView() {
   const { levelId, subLevelId } = useParams();
@@ -44,10 +37,14 @@ function MissionView() {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [code, setCode] = useState('');
   const [challengeStatesReached, setChallengeStatesReached] = useState([]);
+  const [earnedDPState, setEarnedDPState] = useState(null);
 
   const messageIdRef = useRef(0);
   const nextMsgId = () => `msg-${++messageIdRef.current}`;
   const phaseRunRef = useRef(false);
+  
+  // Mission engine reference
+  const engineRef = useRef(null);
 
   // --- Add chat messages with typing animation ---
   const addMessages = useCallback(async (texts, sender = 'maya') => {
@@ -71,173 +68,60 @@ function MissionView() {
     });
   }, []);
 
+  // --- Initialize Mission Engine ---
+  useEffect(() => {
+    if (!missionData) return;
+
+    engineRef.current = new MissionEngine({
+      levelId,
+      subLevelId,
+      missionData,
+      pyodide,
+      levelsList: levels,
+      onStateUpdate: (updates) => {
+        if (updates.phase !== undefined) setPhase(updates.phase);
+        if (updates.output !== undefined) setOutput(updates.output);
+        if (updates.datasetsLoaded !== undefined) setDatasetsLoaded(updates.datasetsLoaded);
+        if (updates.earnedDP !== undefined) setEarnedDPState(updates.earnedDP);
+        if (updates.challengeStatesReached !== undefined) {
+          setChallengeStatesReached(updates.challengeStatesReached);
+        }
+      },
+      addMessages,
+      GUIDED_PHASE,
+      CHALLENGE_PHASE,
+    });
+
+    // Reset initialization guard on mount
+    phaseRunRef.current = false;
+  }, [levelId, subLevelId, missionData, pyodide, addMessages]);
+
   // --- Generate and load datasets ---
   useEffect(() => {
-    if (!mission || !pyodide.isReady || datasetsLoaded) return;
+    if (!mission || !pyodide.isReady || datasetsLoaded || !engineRef.current) return;
 
     const seed = DatasetEngine.getOrCreateSeed();
-    const engine = new DatasetEngine(seed);
-    const csvMap = engine.generateForMission(mission.datasets, `${levelId}-${subLevelId}`);
+    const datasetEngineInstance = new DatasetEngine(seed);
+    engineRef.current.loadDatasets(datasetEngineInstance);
+  }, [mission, pyodide.isReady, datasetsLoaded, engineRef.current]);
 
-    // Convert csvMap to file entries for the worker
-    const fileEntries = Object.entries(csvMap).map(([name, content]) => ({
-      name,
-      content,
-    }));
-
-    pyodide.loadDatasets(fileEntries).then(() => {
-      setDatasetsLoaded(true);
-    }).catch((err) => {
-      console.error('Failed to load datasets:', err);
-    });
-  }, [mission, pyodide.isReady, datasetsLoaded, pyodide, levelId, subLevelId]);
-
-  // --- Conversation flow based on mission type ---
+  // --- Conversation flow ---
   useEffect(() => {
-    if (!mission || !datasetsLoaded || phaseRunRef.current) return;
+    if (!mission || !datasetsLoaded || phaseRunRef.current || !engineRef.current) return;
     phaseRunRef.current = true;
 
-    const mentor = mission.mentor || level.mentor;
-
-    const runConversation = async () => {
-      if (isGuided) {
-        // Phase 1: Situation
-        setPhase(GUIDED_PHASE.SITUATION);
-        await addMessages(mission.conversation.situation, mentor);
-
-        // Phase 2: Concept introduction
-        setPhase(GUIDED_PHASE.CONCEPT);
-        const concept = mission.conversation.concept;
-        if (concept) {
-          await addMessages([concept.explanation, concept.why], mentor);
-        }
-
-        // Phase 3: Task
-        setPhase(GUIDED_PHASE.TASK);
-        await addMessages([mission.conversation.task], mentor);
-
-        // Editor becomes active
-        setPhase(GUIDED_PHASE.ACTIVE);
-      } else if (isChallenge) {
-        // Challenges: just show situation
-        setPhase(CHALLENGE_PHASE.SITUATION);
-        await addMessages(mission.conversation.situation, mentor);
-        setPhase(CHALLENGE_PHASE.ACTIVE);
-      }
-    };
-
-    runConversation();
-  }, [mission, datasetsLoaded, isGuided, isChallenge, addMessages, level]);
+    engineRef.current.startIntro();
+  }, [mission, datasetsLoaded, engineRef.current]);
 
   // --- Handle code run ---
   const handleRun = useCallback(async () => {
-    if (!pyodide.isReady) return;
+    if (!pyodide.isReady || !engineRef.current) return;
 
     const codeToRun = editorRef.current?.getCode?.() || code;
     if (!codeToRun.trim()) return;
 
-    setOutput({ stdout: '', stderr: '', error: null });
-    const result = await pyodide.runCode(codeToRun);
-
-    if (result.error) {
-      setOutput({ stdout: result.stdout || '', stderr: result.stderr || '', error: result.error });
-      return;
-    }
-
-    setOutput({ stdout: result.stdout, stderr: result.stderr, error: null });
-
-    // Run validation
-    const validatorFn = ALL_VALIDATORS[mission.validation.fn];
-    if (!validatorFn) return;
-
-    const validationResult = validatorFn({
-      stdout: result.stdout,
-      stderr: result.stderr,
-      variables: result.variables,
-    });
-
-    const mentor = mission.mentor || level.mentor;
-
-    if (isGuided) {
-      // --- GUIDED FLOW ---
-      if (validationResult.passed) {
-        setPhase(GUIDED_PHASE.RESULT_REACTION);
-
-        // Interpolate and show result reaction
-        const reaction = interpolate(
-          mission.conversation.resultReaction,
-          validationResult.templateVars
-        );
-        await addMessages([reaction], mentor);
-
-        // Show result explanation
-        setPhase(GUIDED_PHASE.RESULT_EXPLANATION);
-        const explanation = interpolate(
-          mission.conversation.resultExplanation,
-          validationResult.templateVars
-        );
-        await addMessages([explanation], mentor);
-
-        // Complete
-        setPhase(GUIDED_PHASE.COMPLETE);
-        setMessages((prev) => [
-          ...prev,
-          { id: nextMsgId(), sender: 'system', text: '✅ Sub-level Complete!' },
-        ]);
-
-        // Save progress
-        completeSubLevel(levelId, subLevelId, hintsUsed, codeToRun);
-      } else {
-        // Failure: show validator feedback
-        await addMessages([validationResult.feedback], mentor);
-      }
-    } else if (isChallenge) {
-      // --- CHALLENGE FLOW ---
-      if (validationResult.passed) {
-        // All states reached — show final response
-        const finalState = validationResult.currentState;
-        const finalResponse = mission.conversation.stateResponses?.[finalState];
-        if (finalResponse) {
-          await addMessages([finalResponse], mentor);
-        }
-
-        setPhase(CHALLENGE_PHASE.COMPLETE);
-        setMessages((prev) => [
-          ...prev,
-          { id: nextMsgId(), sender: 'system', text: '🏆 Level Challenge Complete!' },
-        ]);
-
-        completeSubLevel(levelId, subLevelId, hintsUsed, codeToRun);
-      } else if (validationResult.reachedStates) {
-        // Multi-step: check for newly reached states
-        const newStates = validationResult.reachedStates.filter(
-          s => !challengeStatesReached.includes(s)
-        );
-
-        if (newStates.length > 0) {
-          setChallengeStatesReached(prev => [...prev, ...newStates]);
-
-          // Show response for the highest newly reached state
-          for (const state of newStates) {
-            updateChallengeState(levelId, subLevelId, state);
-            const response = mission.conversation.stateResponses?.[state];
-            if (response) {
-              await addMessages([response], mentor);
-            }
-          }
-        } else {
-          // No progress
-          await addMessages([validationResult.feedback], mentor);
-        }
-      } else {
-        await addMessages([validationResult.feedback], mentor);
-      }
-    }
-  }, [
-    pyodide, code, mission, level, isGuided, isChallenge,
-    addMessages, interpolate, hintsUsed, levelId, subLevelId,
-    challengeStatesReached,
-  ]);
+    await engineRef.current.runAndValidate(codeToRun, hintsUsed, interpolate);
+  }, [pyodide, code, hintsUsed, interpolate]);
 
   // --- Handle hint used ---
   const handleHintUsed = useCallback((count) => {
@@ -300,11 +184,12 @@ function MissionView() {
   const isComplete = phase === GUIDED_PHASE.COMPLETE || phase === CHALLENGE_PHASE.COMPLETE;
   const isActive = phase === GUIDED_PHASE.ACTIVE || phase === CHALLENGE_PHASE.ACTIVE;
 
-  // Calculate DP for display
-  const baseDp = mission.points.base;
-  const bonusDp = hintsUsed === 0 ? mission.points.bonus : 0;
-  const penalty = hintsUsed * POINTS.HINT_PENALTY;
-  const earnedDp = Math.max(0, baseDp + bonusDp - penalty);
+  // Calculate dynamic rewards using RewardEngine
+  const rewards = RewardEngine.calculateRewards(mission.points, {
+    hintsUsed,
+    isChallenge,
+  });
+  const earnedDp = earnedDPState !== null ? earnedDPState : rewards.earnedDP;
 
   return (
     <div className="mission-view" id="mission-view-page">

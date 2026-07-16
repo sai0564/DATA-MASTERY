@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { levels } from '../data/levelRegistry.js';
+import { levels } from '../content/levelRegistry.js';
 import { getLevelStats, loadProgress } from '../stores/progressStore.js';
 import { MENTORS } from '../utils/constants.js';
 import './Dashboard.css';

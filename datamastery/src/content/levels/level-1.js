@@ -1,13 +1,8 @@
 /**
  * Level 1: First Week at NovaMetrics
  *
- * Mentor: Maya — Senior Data Analyst
- * Dataset: customers.csv
- * Focus: DataFrame inspection fundamentals
- *
- * 6 guided sub-levels + 1 level challenge = 7 total
+ * Configured using the generic Sprint 2 data-driven schema.
  */
-
 export const level1 = {
   id: 'level-1',
   title: 'First Week at NovaMetrics',
@@ -18,10 +13,35 @@ export const level1 = {
     // ─── 1.1 Your First Dataset ───────────────────────────────────────
     {
       id: '1.1',
-      title: 'Your First Dataset',
+      level: 'level-1',
+      subLevel: '1.1',
       type: 'guided',
       mentor: 'maya',
-
+      title: 'Your First Dataset',
+      subtitle: 'Loading and previewing a DataFrame',
+      learningObjective: 'Learn basic DataFrame loading with pd.read_csv() and previewing with df.head()',
+      
+      // Business situation introduction messages
+      businessSituation: [
+        "Morning! Welcome to the analytics team. 👋",
+        "I'm Maya — I'll be walking you through your first few tasks.",
+        "Marketing just sent us a customer export.",
+        "Before we do anything with it, I want you to see what the data looks like.",
+      ],
+      
+      // Seeded datasets definition
+      datasets: {
+        'customers.csv': {
+          generator: 'customers',
+          count: 1247,
+          injections: [],
+        },
+      },
+      
+      starterCode: `import pandas as pd\n\n# Load the customer data\ndf = pd.read_csv('customers.csv')\n\n# Show the first few rows\n`,
+      
+      expectedConcepts: ['read_csv', 'DataFrame', 'head'],
+      
       conversation: {
         situation: [
           "Morning! Welcome to the analytics team. 👋",
@@ -38,7 +58,54 @@ export const level1 = {
         resultReaction: "There we go — our first customer records.",
         resultExplanation: "Each row is one customer. You can see their ID, name, email, location, and when they signed up. That's the shape of this dataset.",
       },
+      
+      hints: {
+        taskReminder: "Maya asked you to load the file and show the first few records.",
+        conceptReminder: "Use pd.read_csv() to load the file, then head() to preview it.",
+        syntaxClue: "Try: df.head()",
+      },
+      
+      validator: {
+        type: 'semantic',
+        fn: 'validateHead',
+      },
+      
+      rewards: {
+        basePoints: 50,
+        bonusPoints: 10,
+      },
+      
+      points: { base: 50, bonus: 10 }, // legacy compatibility fallback
+      
+      completionConditions: {
+        checkVariables: ['df'],
+        checkOutput: ['customer_id', 'first_name'],
+      },
+      
+      unlockRules: {
+        requiresCompleted: [],
+      },
+      
+      nextMission: '1.2',
+    },
 
+    // ─── 1.2 How Big Is This File? ────────────────────────────────────
+    {
+      id: '1.2',
+      level: 'level-1',
+      subLevel: '1.2',
+      type: 'guided',
+      mentor: 'maya',
+      title: 'How Big Is This File?',
+      subtitle: 'DataFrame size and dimensions',
+      learningObjective: 'Inspect rows and columns count using df.shape attribute',
+      
+      businessSituation: [
+        "Good — you've seen the first few rows.",
+        "Now I need to know the size of this dataset.",
+        "Marketing says we have around 1,200 customers. Let's check.",
+      ],
+      
       datasets: {
         'customers.csv': {
           generator: 'customers',
@@ -46,42 +113,11 @@ export const level1 = {
           injections: [],
         },
       },
-
-      starterCode: `import pandas as pd
-
-# Load the customer data
-df = pd.read_csv('customers.csv')
-
-# Show the first few rows
-`,
-
-      hints: {
-        taskReminder: "Maya asked you to load the file and show the first few records.",
-        conceptReminder: "Use pd.read_csv() to load the file, then head() to preview it.",
-        syntaxClue: "Try: df.head()",
-      },
-
-      skills: {
-        introduces: ['read_csv', 'DataFrame', 'head'],
-        reuses: [],
-      },
-
-      validation: {
-        type: 'semantic',
-        fn: 'validateHead',
-      },
-
-      points: { base: 50, bonus: 10 },
-      estimatedMinutes: 3,
-    },
-
-    // ─── 1.2 How Big Is This File? ────────────────────────────────────
-    {
-      id: '1.2',
-      title: 'How Big Is This File?',
-      type: 'guided',
-      mentor: 'maya',
-
+      
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Check the size of this dataset\n`,
+      
+      expectedConcepts: ['shape'],
+      
       conversation: {
         situation: [
           "Good — you've seen the first few rows.",
@@ -97,7 +133,52 @@ df = pd.read_csv('customers.csv')
         resultReaction: "{{shape_0}} rows and {{shape_1}} columns.",
         resultExplanation: "So we have {{shape_0}} customer records, each with {{shape_1}} fields. That matches roughly what Marketing told us.",
       },
+      
+      hints: {
+        taskReminder: "Maya needs to know the number of rows and columns.",
+        conceptReminder: "shape gives you (rows, columns) as a tuple.",
+        syntaxClue: "Try: df.shape",
+      },
+      
+      validator: {
+        type: 'semantic',
+        fn: 'validateShape',
+      },
+      
+      rewards: {
+        basePoints: 50,
+        bonusPoints: 10,
+      },
+      
+      points: { base: 50, bonus: 10 },
+      
+      completionConditions: {
+        checkOutputRegex: ['\\b\\d+\\b'],
+      },
+      
+      unlockRules: {
+        requiresCompleted: ['1.1'],
+      },
+      
+      nextMission: '1.3',
+    },
 
+    // ─── 1.3 What Fields Are We Tracking? ─────────────────────────────
+    {
+      id: '1.3',
+      level: 'level-1',
+      subLevel: '1.3',
+      type: 'guided',
+      mentor: 'maya',
+      title: 'What Fields Are We Tracking?',
+      subtitle: 'DataFrame column names',
+      learningObjective: 'Inspect DataFrame columns list with df.columns attribute',
+      
+      businessSituation: [
+        "We know how many rows we have.",
+        "Now I want to see what information we're actually tracking about each customer.",
+      ],
+      
       datasets: {
         'customers.csv': {
           generator: 'customers',
@@ -105,41 +186,11 @@ df = pd.read_csv('customers.csv')
           injections: [],
         },
       },
-
-      starterCode: `import pandas as pd
-
-df = pd.read_csv('customers.csv')
-
-# Check the size of this dataset
-`,
-
-      hints: {
-        taskReminder: "Maya needs to know the number of rows and columns.",
-        conceptReminder: "shape gives you (rows, columns) as a tuple.",
-        syntaxClue: "Try: df.shape",
-      },
-
-      skills: {
-        introduces: ['shape'],
-        reuses: ['read_csv'],
-      },
-
-      validation: {
-        type: 'semantic',
-        fn: 'validateShape',
-      },
-
-      points: { base: 50, bonus: 10 },
-      estimatedMinutes: 2,
-    },
-
-    // ─── 1.3 What Fields Are We Tracking? ─────────────────────────────
-    {
-      id: '1.3',
-      title: 'What Fields Are We Tracking?',
-      type: 'guided',
-      mentor: 'maya',
-
+      
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Show the column names\n`,
+      
+      expectedConcepts: ['columns'],
+      
       conversation: {
         situation: [
           "We know how many rows we have.",
@@ -154,7 +205,53 @@ df = pd.read_csv('customers.csv')
         resultReaction: "Right — those are our fields.",
         resultExplanation: "We're tracking customer IDs, names, emails, age, location, and signup dates. That's a standard customer profile.",
       },
+      
+      hints: {
+        taskReminder: "Maya wants to see what columns exist in the dataset.",
+        conceptReminder: "columns gives you the list of field names.",
+        syntaxClue: "Try: df.columns",
+      },
+      
+      validator: {
+        type: 'semantic',
+        fn: 'validateColumns',
+      },
+      
+      rewards: {
+        basePoints: 50,
+        bonusPoints: 10,
+      },
+      
+      points: { base: 50, bonus: 10 },
+      
+      completionConditions: {
+        checkOutput: ['customer_id', 'first_name'],
+      },
+      
+      unlockRules: {
+        requiresCompleted: ['1.2'],
+      },
+      
+      nextMission: '1.4',
+    },
 
+    // ─── 1.4 What Types Did Pandas Detect? ────────────────────────────
+    {
+      id: '1.4',
+      level: 'level-1',
+      subLevel: '1.4',
+      type: 'guided',
+      mentor: 'maya',
+      title: 'What Types Did Pandas Detect?',
+      subtitle: 'Data types detection',
+      learningObjective: 'Inspect column data types with df.dtypes or df.info()',
+      
+      businessSituation: [
+        "One thing I always check early — the data types.",
+        "Sometimes dates arrive as text, or numbers get loaded as strings.",
+        "That causes problems later if you don't catch it now.",
+      ],
+      
       datasets: {
         'customers.csv': {
           generator: 'customers',
@@ -162,41 +259,11 @@ df = pd.read_csv('customers.csv')
           injections: [],
         },
       },
-
-      starterCode: `import pandas as pd
-
-df = pd.read_csv('customers.csv')
-
-# Show the column names
-`,
-
-      hints: {
-        taskReminder: "Maya wants to see what columns exist in the dataset.",
-        conceptReminder: "columns gives you the list of field names.",
-        syntaxClue: "Try: df.columns",
-      },
-
-      skills: {
-        introduces: ['columns'],
-        reuses: ['read_csv'],
-      },
-
-      validation: {
-        type: 'semantic',
-        fn: 'validateColumns',
-      },
-
-      points: { base: 50, bonus: 10 },
-      estimatedMinutes: 2,
-    },
-
-    // ─── 1.4 What Types Did Pandas Detect? ────────────────────────────
-    {
-      id: '1.4',
-      title: 'What Types Did Pandas Detect?',
-      type: 'guided',
-      mentor: 'maya',
-
+      
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Check the data types\n`,
+      
+      expectedConcepts: ['dtypes', 'info'],
+      
       conversation: {
         situation: [
           "One thing I always check early — the data types.",
@@ -212,7 +279,53 @@ df = pd.read_csv('customers.csv')
         resultReaction: "Good. Take a look at those types.",
         resultExplanation: "Numbers show as `int64` or `float64`, text as `object`. Notice that `signup_date` is loaded as `object` — that means Pandas treated it as text, not a proper date. We'll fix that later.",
       },
+      
+      hints: {
+        taskReminder: "Maya wants to see the data type of each column.",
+        conceptReminder: "dtypes shows column names and their types. info() gives a broader summary.",
+        syntaxClue: "Try: df.dtypes",
+      },
+      
+      validator: {
+        type: 'semantic',
+        fn: 'validateDtypes',
+      },
+      
+      rewards: {
+        basePoints: 50,
+        bonusPoints: 10,
+      },
+      
+      points: { base: 50, bonus: 10 },
+      
+      completionConditions: {
+        checkOutput: ['int64', 'object'],
+      },
+      
+      unlockRules: {
+        requiresCompleted: ['1.3'],
+      },
+      
+      nextMission: '1.5',
+    },
 
+    // ─── 1.5 Don't Only Look at the Top ──────────────────────────────
+    {
+      id: '1.5',
+      level: 'level-1',
+      subLevel: '1.5',
+      type: 'guided',
+      mentor: 'maya',
+      title: "Don't Only Look at the Top",
+      subtitle: 'Inspecting bottom and random rows',
+      learningObjective: 'Inspect DataFrame using tail() and sample() methods',
+      
+      businessSituation: [
+        "Here's something I learned the hard way.",
+        "The first few rows might look clean, but the bottom or middle of the file could be completely different.",
+        "Always check more than just the top.",
+      ],
+      
       datasets: {
         'customers.csv': {
           generator: 'customers',
@@ -220,41 +333,11 @@ df = pd.read_csv('customers.csv')
           injections: [],
         },
       },
-
-      starterCode: `import pandas as pd
-
-df = pd.read_csv('customers.csv')
-
-# Check the data types
-`,
-
-      hints: {
-        taskReminder: "Maya wants to see the data type of each column.",
-        conceptReminder: "dtypes shows column names and their types. info() gives a broader summary.",
-        syntaxClue: "Try: df.dtypes",
-      },
-
-      skills: {
-        introduces: ['dtypes', 'info'],
-        reuses: ['read_csv'],
-      },
-
-      validation: {
-        type: 'semantic',
-        fn: 'validateDtypes',
-      },
-
-      points: { base: 50, bonus: 10 },
-      estimatedMinutes: 2,
-    },
-
-    // ─── 1.5 Don't Only Look at the Top ──────────────────────────────
-    {
-      id: '1.5',
-      title: "Don't Only Look at the Top",
-      type: 'guided',
-      mentor: 'maya',
-
+      
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Show the last few rows\n\n# Show a random sample of 5 rows\n`,
+      
+      expectedConcepts: ['tail', 'sample'],
+      
       conversation: {
         situation: [
           "Here's something I learned the hard way.",
@@ -270,7 +353,50 @@ df = pd.read_csv('customers.csv')
         resultReaction: "See? The bottom of the file can look quite different.",
         resultExplanation: "By checking the top, bottom, and random samples, you get a much better sense of the real data. This is a habit worth building early.",
       },
+      
+      hints: {
+        taskReminder: "Maya wants to see the last rows and a random sample.",
+        conceptReminder: "tail() shows the bottom, sample() picks random rows.",
+        syntaxClue: "Try: df.tail() and then df.sample(5)",
+      },
+      
+      validator: {
+        type: 'semantic',
+        fn: 'validateTailSample',
+      },
+      
+      rewards: {
+        basePoints: 50,
+        bonusPoints: 10,
+      },
+      
+      points: { base: 50, bonus: 10 },
+      
+      completionConditions: {},
+      
+      unlockRules: {
+        requiresCompleted: ['1.4'],
+      },
+      
+      nextMission: '1.6',
+    },
 
+    // ─── 1.6 Give Me the Quick Picture ────────────────────────────────
+    {
+      id: '1.6',
+      level: 'level-1',
+      subLevel: '1.6',
+      type: 'guided',
+      mentor: 'maya',
+      title: 'Give Me the Quick Picture',
+      subtitle: 'Statistical summary of a DataFrame',
+      learningObjective: 'Generate statistical descriptions with df.describe()',
+      
+      businessSituation: [
+        "I'm about to go into a meeting.",
+        "I need a quick statistical summary of the customer file — averages, ranges, that kind of thing.",
+      ],
+      
       datasets: {
         'customers.csv': {
           generator: 'customers',
@@ -278,43 +404,11 @@ df = pd.read_csv('customers.csv')
           injections: [],
         },
       },
-
-      starterCode: `import pandas as pd
-
-df = pd.read_csv('customers.csv')
-
-# Show the last few rows
-
-# Show a random sample of 5 rows
-`,
-
-      hints: {
-        taskReminder: "Maya wants to see the last rows and a random sample.",
-        conceptReminder: "tail() shows the bottom, sample() picks random rows.",
-        syntaxClue: "Try: df.tail() and then df.sample(5)",
-      },
-
-      skills: {
-        introduces: ['tail', 'sample'],
-        reuses: ['read_csv'],
-      },
-
-      validation: {
-        type: 'semantic',
-        fn: 'validateTailSample',
-      },
-
-      points: { base: 50, bonus: 10 },
-      estimatedMinutes: 3,
-    },
-
-    // ─── 1.6 Give Me the Quick Picture ────────────────────────────────
-    {
-      id: '1.6',
-      title: 'Give Me the Quick Picture',
-      type: 'guided',
-      mentor: 'maya',
-
+      
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Generate a statistical summary\n`,
+      
+      expectedConcepts: ['describe'],
+      
       conversation: {
         situation: [
           "I'm about to go into a meeting.",
@@ -329,49 +423,65 @@ df = pd.read_csv('customers.csv')
         resultReaction: "Perfect — I can take this into the meeting.",
         resultExplanation: "Look at the age column — the min, max, and mean tell you a lot about your customers. If any of those numbers look wrong, that's a sign of data quality issues. We'll dig into that next week.",
       },
-
-      datasets: {
-        'customers.csv': {
-          generator: 'customers',
-          count: 1247,
-          injections: [],
-        },
-      },
-
-      starterCode: `import pandas as pd
-
-df = pd.read_csv('customers.csv')
-
-# Generate a statistical summary
-`,
-
+      
       hints: {
         taskReminder: "Maya needs a statistical summary for the meeting.",
         conceptReminder: "describe() gives count, mean, std, min, 25%, 50%, 75%, max.",
         syntaxClue: "Try: df.describe()",
       },
-
-      skills: {
-        introduces: ['describe'],
-        reuses: ['read_csv'],
-      },
-
-      validation: {
+      
+      validator: {
         type: 'semantic',
         fn: 'validateDescribe',
       },
-
+      
+      rewards: {
+        basePoints: 50,
+        bonusPoints: 10,
+      },
+      
       points: { base: 50, bonus: 10 },
-      estimatedMinutes: 2,
+      
+      completionConditions: {},
+      
+      unlockRules: {
+        requiresCompleted: ['1.5'],
+      },
+      
+      nextMission: '1.7',
     },
 
     // ─── 1.7 First Week Review (LEVEL CHALLENGE) ─────────────────────
     {
       id: '1.7',
-      title: 'First Week Review',
+      level: 'level-1',
+      subLevel: '1.7',
       type: 'challenge',
       mentor: 'maya',
-
+      title: 'First Week Review',
+      subtitle: 'Explore an unfamiliar dataset independently',
+      learningObjective: 'Independently load, size-check, field-check, type-check, and summarize a new dataset',
+      
+      businessSituation: [
+        "New file just came in.",
+        "This is a sales export — different from the customer data.",
+        "📎 sales_sample.csv",
+        "Take a look before you touch anything.",
+        "Tell me what we're working with.",
+      ],
+      
+      datasets: {
+        'sales_sample.csv': {
+          generator: 'customers',
+          count: 500,
+          injections: [],
+        },
+      },
+      
+      starterCode: `import pandas as pd\n\n# A new file has arrived — investigate it\n`,
+      
+      expectedConcepts: ['read_csv', 'head', 'shape', 'columns', 'dtypes', 'tail', 'sample', 'describe'],
+      
       conversation: {
         situation: [
           "New file just came in.",
@@ -388,32 +498,14 @@ df = pd.read_csv('customers.csv')
           'summarized': "Nice work. You didn't need me to tell you what to check.\n\nThat's a solid first week.",
         },
       },
-
-      datasets: {
-        'sales_sample.csv': {
-          generator: 'customers', // Reuses customer generator for now — will be sales in later phases
-          count: 500,
-          injections: [],
-        },
-      },
-
-      starterCode: `import pandas as pd
-
-# A new file has arrived — investigate it
-`,
-
+      
       hints: {
         workplaceThinking: "If someone hands you an unfamiliar data file, what would you want to know first?",
         analyticalDirection: "Start with the basics: how big is it, what columns does it have, what types are the columns.",
         methodClue: "This week you learned: head(), shape, columns, dtypes, tail(), sample(), describe(). Which ones help here?",
       },
-
-      skills: {
-        introduces: [],
-        reuses: ['read_csv', 'head', 'shape', 'columns', 'dtypes', 'tail', 'sample', 'describe'],
-      },
-
-      validation: {
+      
+      validator: {
         type: 'multi-step',
         fn: 'validateFirstWeekChallenge',
         states: [
@@ -424,11 +516,23 @@ df = pd.read_csv('customers.csv')
           { id: 'summarized', description: 'Generated a statistical summary' },
         ],
       },
-
+      
+      rewards: {
+        basePoints: 100,
+        bonusPoints: 50,
+      },
+      
       points: { base: 100, bonus: 50 },
-      estimatedMinutes: 8,
-
-      requires: ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6'],
+      
+      completionConditions: {},
+      
+      unlockRules: {
+        requiresCompleted: ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6'],
+      },
+      
+      requires: ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6'], // legacy compatibility
+      
+      nextMission: null,
     },
   ],
 };

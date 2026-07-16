@@ -1,12 +1,15 @@
 /**
- * Level Registry — central lookup for all levels and sub-levels.
- *
- * Replaces the old missions.js chapter-based system.
+ * Level Registry — Central registry for levels and validation hook initialization.
  */
-
 import { level1 } from './levels/level-1.js';
+import { level1Validators } from './validators/level1.js';
+import { ValidationEngine } from '../engine/ValidationEngine.js';
 
+// Register all levels
 export const levels = [level1];
+
+// Auto-register validators in the ValidationEngine
+ValidationEngine.registerValidators(level1Validators);
 
 /**
  * Look up a specific level by levelId.
@@ -62,3 +65,4 @@ export function getSubLevelIds(levelId) {
   if (!level) return [];
   return level.subLevels.map((s) => s.id);
 }
+export default levels;

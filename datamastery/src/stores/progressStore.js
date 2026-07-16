@@ -1,215 +1,96 @@
 /**
- * Progress Store — manages learner progress in localStorage.
- *
- * Structure:
- * {
- *   levels: {
- *     'level-1': {
- *       status: 'active' | 'completed' | 'locked',
- *       subLevels: {
- *         '1.1': { completed: true, dp: 60, hintsUsed: 0, code: '...' },
- *         '1.2': { completed: false, dp: 0, hintsUsed: 0, code: '' },
- *       },
- *       // For challenges with multi-step validation
- *       challengeStates: {
- *         '1.7': { reachedStates: ['loaded', 'checked-size'], ... }
- *       }
- *     }
- *   },
- *   totalDP: 0,
- *   completedCount: 0,
- * }
+ * Progress Store — Manages state delegation to SaveSystem, RewardEngine, and ProgressionEngine.
  */
-
-import { STORAGE_KEYS, POINTS } from '../utils/constants.js';
-import { levels } from '../data/levelRegistry.js';
-
-const INITIAL_PROGRESS = {
-  levels: {},
-  totalDP: 0,
-  completedCount: 0,
-};
+import { levels } from '../content/levelRegistry.js';
+import { SaveSystem } from '../engine/SaveSystem.js';
+import { ProgressionEngine } from '../engine/ProgressionEngine.js';
+import { RewardEngine } from '../engine/RewardEngine.js';
 
 /**
- * Load progress from localStorage.
+ * Load progress. Delegates to SaveSystem.
  */
 export function loadProgress() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.PROGRESS);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.warn('Failed to load progress:', e);
-  }
+  const progress = SaveSystem.getProgress();
+  if (progress) return progress;
   return initializeProgress();
 }
 
 /**
  * Initialize progress structure for all known levels.
- * Level 1 is active, all others are locked.
  */
 export function initializeProgress() {
-  const progress = { ...INITIAL_PROGRESS, levels: {} };
-
-  levels.forEach((level, levelIndex) => {
-    const levelProgress = {
-      status: levelIndex === 0 ? 'active' : 'locked',
-      subLevels: {},
-      challengeStates: {},
-    };
-
-    level.subLevels.forEach((sub, subIndex) => {
-      levelProgress.subLevels[sub.id] = {
-        completed: false,
-        dp: 0,
-        hintsUsed: 0,
-        code: '',
-        // Only the first sub-level of the first level is unlocked
-        unlocked: levelIndex === 0 && subIndex === 0,
-      };
-
-      // If it's a challenge type, add state tracking
-      if (sub.type === 'challenge') {
-        levelProgress.challengeStates[sub.id] = {
-          reachedStates: [],
-        };
-      }
-    });
-
-    progress.levels[level.id] = levelProgress;
-  });
-
-  saveProgress(progress);
+  const progress = ProgressionEngine.initializeProgress(levels);
+  SaveSystem.saveProgress(progress);
   return progress;
 }
 
 /**
- * Save progress to localStorage.
+ * Save progress. Delegates to SaveSystem.
  */
 export function saveProgress(progress) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(progress));
-  } catch (e) {
-    console.warn('Failed to save progress:', e);
-  }
+  SaveSystem.saveProgress(progress);
 }
 
 /**
- * Mark a sub-level as complete, award DP, and unlock the next sub-level.
+ * Complete a sub-level.
  */
 export function completeSubLevel(levelId, subLevelId, hintsUsed, code) {
   const progress = loadProgress();
-  const levelProgress = progress.levels[levelId];
-  if (!levelProgress) return progress;
+  const level = levels.find((l) => l.id === levelId);
+  const subLevel = level?.subLevels.find((s) => s.id === subLevelId);
 
-  const subProgress = levelProgress.subLevels[subLevelId];
-  if (!subProgress || subProgress.completed) return progress;
+  if (!level || !subLevel) return progress;
 
-  // Find the sub-level data to determine points
-  const level = levels.find(l => l.id === levelId);
-  const subLevel = level?.subLevels.find(s => s.id === subLevelId);
-  if (!subLevel) return progress;
+  // Calculate rewards using RewardEngine
+  const rewards = RewardEngine.calculateRewards(subLevel.points || subLevel.rewards, {
+    hintsUsed,
+    attempts: 1, // progressStore call represents completing (so we can assume 1 or fallback to default)
+    isChallenge: subLevel.type === 'challenge',
+  });
 
-  // Calculate DP
-  const baseDp = subLevel.points.base;
-  const bonusDp = hintsUsed === 0 ? subLevel.points.bonus : 0;
-  const hintPenalty = hintsUsed * POINTS.HINT_PENALTY;
-  const dp = Math.max(0, baseDp + bonusDp - hintPenalty);
-
-  // Update sub-level progress
-  subProgress.completed = true;
-  subProgress.dp = dp;
-  subProgress.hintsUsed = hintsUsed;
-  subProgress.code = code;
-
-  // Update totals
-  progress.totalDP += dp;
-  progress.completedCount += 1;
-
-  // Unlock next sub-level
-  const subIdx = level.subLevels.findIndex(s => s.id === subLevelId);
-  if (subIdx < level.subLevels.length - 1) {
-    const nextSub = level.subLevels[subIdx + 1];
-    // For challenges, check if all required subs are complete
-    if (nextSub.type === 'challenge' && nextSub.requires) {
-      const allRequirementsMet = nextSub.requires.every(
-        reqId => levelProgress.subLevels[reqId]?.completed
-      );
-      if (allRequirementsMet) {
-        levelProgress.subLevels[nextSub.id].unlocked = true;
-      }
-    } else {
-      levelProgress.subLevels[nextSub.id].unlocked = true;
-    }
-  }
-
-  // Check if level is complete (all sub-levels done)
-  const allDone = level.subLevels.every(
-    s => levelProgress.subLevels[s.id]?.completed
+  // Modify progress using ProgressionEngine
+  ProgressionEngine.completeSubLevel(
+    progress,
+    level,
+    subLevelId,
+    rewards.earnedDP,
+    hintsUsed,
+    code,
+    levels
   );
-  if (allDone) {
-    levelProgress.status = 'completed';
-    // Unlock next level
-    const levelIdx = levels.findIndex(l => l.id === levelId);
-    if (levelIdx < levels.length - 1) {
-      const nextLevel = levels[levelIdx + 1];
-      if (progress.levels[nextLevel.id]) {
-        progress.levels[nextLevel.id].status = 'active';
-        // Unlock the first sub-level of the next level
-        const firstSub = nextLevel.subLevels[0];
-        if (firstSub) {
-          progress.levels[nextLevel.id].subLevels[firstSub.id].unlocked = true;
-        }
-      }
-    }
-  }
 
-  saveProgress(progress);
+  SaveSystem.saveProgress(progress);
+  SaveSystem.saveCode(levelId, subLevelId, code);
+
   return progress;
 }
 
 /**
- * Update challenge state for multi-step validation.
+ * Update challenge intermediate state.
  */
 export function updateChallengeState(levelId, subLevelId, newState) {
   const progress = loadProgress();
-  const levelProgress = progress.levels[levelId];
-  if (!levelProgress) return progress;
-
-  if (!levelProgress.challengeStates[subLevelId]) {
-    levelProgress.challengeStates[subLevelId] = { reachedStates: [] };
-  }
-
-  const states = levelProgress.challengeStates[subLevelId].reachedStates;
-  if (!states.includes(newState)) {
-    states.push(newState);
-  }
-
-  saveProgress(progress);
+  ProgressionEngine.updateChallengeState(progress, levelId, subLevelId, newState);
+  SaveSystem.saveProgress(progress);
   return progress;
 }
 
 /**
- * Get the current sub-level status for a given level.
+ * Get the current sub-level status.
  */
 export function getSubLevelStatus(levelId, subLevelId) {
   const progress = loadProgress();
-  const levelProgress = progress.levels[levelId];
-  if (!levelProgress) return 'locked';
-  const sub = levelProgress.subLevels[subLevelId];
-  if (!sub) return 'locked';
-  if (sub.completed) return 'completed';
-  if (sub.unlocked) return 'active';
-  return 'locked';
+  return ProgressionEngine.isSubLevelUnlocked(progress, levelId, subLevelId)
+    ? (progress.levels[levelId].subLevels[subLevelId].completed ? 'completed' : 'active')
+    : 'locked';
 }
 
 /**
- * Get total DP earned.
+ * Get total DP.
  */
 export function getTotalDP() {
   const progress = loadProgress();
-  return progress.totalDP;
+  return progress.totalDP || 0;
 }
 
 /**
@@ -218,13 +99,14 @@ export function getTotalDP() {
 export function getLevelStats(levelId) {
   const progress = loadProgress();
   const levelProgress = progress.levels[levelId];
-  const level = levels.find(l => l.id === levelId);
+  const level = levels.find((l) => l.id === levelId);
+
   if (!levelProgress || !level) {
     return { completed: 0, total: 0, dp: 0, status: 'locked' };
   }
 
   const completed = level.subLevels.filter(
-    s => levelProgress.subLevels[s.id]?.completed
+    (s) => !!levelProgress.subLevels[s.id]?.completed
   ).length;
 
   const dp = level.subLevels.reduce(
