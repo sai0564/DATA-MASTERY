@@ -43,6 +43,7 @@ export function generateCustomers(rng, count = 1247) {
       city: loc.city,
       state: loc.state,
       country: loc.country,
+      annual_salary: rng.int(40000, 150000),
       signup_date: rng.date(2023, 2025),
     });
   }

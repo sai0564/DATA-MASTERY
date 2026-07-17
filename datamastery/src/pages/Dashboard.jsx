@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { levels } from '../content/levelRegistry.js';
 import { getLevelStats, loadProgress } from '../stores/progressStore.js';
-import { MENTORS } from '../utils/constants.js';
+import { MENTORS, ACHIEVEMENT_REGISTRY } from '../utils/constants.js';
 import './Dashboard.css';
+
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -123,38 +124,5 @@ function Dashboard() {
     </div>
   );
 }
-
-const ACHIEVEMENT_REGISTRY = {
-  'first-run': {
-    title: 'First Successful Run',
-    description: 'You loaded your first dataset and printed it using Pandas!',
-    icon: '🚀'
-  },
-  'no-hints': {
-    title: 'No Hint Completion',
-    description: 'Completed a sub-level without using any hints.',
-    icon: '🧠'
-  },
-  'perfect-week': {
-    title: 'Perfect First Week',
-    description: 'Completed all Level 1 guided sub-levels without using a single hint.',
-    icon: '⭐'
-  },
-  'performance-review': {
-    title: 'First Performance Review',
-    description: 'Successfully completed the Level 1 challenge and earned a promotion.',
-    icon: '👔'
-  },
-  'fast-learner': {
-    title: 'Fast Learner',
-    description: 'Solved a sub-level on your very first try.',
-    icon: '⚡'
-  },
-  'curious-analyst': {
-    title: 'Curious Analyst',
-    description: 'Attempted a sub-level 4+ times or viewed all hints.',
-    icon: '🔍'
-  }
-};
 
 export default Dashboard;

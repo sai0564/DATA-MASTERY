@@ -7,156 +7,22 @@ import { generateCustomers, customersToCSV } from './generators/CustomerGenerato
 import { injectDuplicates } from './injectors/DuplicateInjector.js';
 import { SaveSystem } from './SaveSystem.js';
 
-// =========================================================================
-// GENERATORS INTERFACE STUBS
-// =========================================================================
+import { ProductGenerator } from './generators/ProductGenerator.js';
+import { OrderGenerator } from './generators/OrderGenerator.js';
+import { CampaignGenerator } from './generators/CampaignGenerator.js';
+import { SalesGenerator } from './generators/SalesGenerator.js';
+import { SiteGenerator } from './generators/SiteGenerator.js';
+import { SensorGenerator } from './generators/SensorGenerator.js';
+import { OperationsGenerator } from './generators/OperationsGenerator.js';
 
-export const ProductGenerator = {
-  generate(rng, count) {
-    // Stub for products generator
-    return Array.from({ length: count }, (_, i) => ({
-      product_id: `PROD-${String(i + 1).padStart(5, '0')}`,
-      product_name: `Product ${i + 1}`,
-      category: 'Electronics',
-      unit_price: rng.int(10, 500) / 100
-    }));
-  },
-  toCSV(records) {
-    const header = 'product_id,product_name,category,unit_price\n';
-    const rows = records.map(r => `${r.product_id},"${r.product_name}",${r.category},${r.unit_price}`).join('\n');
-    return header + rows;
-  }
-};
-
-export const OrderGenerator = {
-  generate(rng, count, customers = [], products = []) {
-    // Stub for orders generator, optionally linked to customer & product entities
-    return Array.from({ length: count }, (_, i) => {
-      const cust = customers.length ? rng.pick(customers) : { customer_id: 'CUST-00001' };
-      const prod = products.length ? rng.pick(products) : { product_id: 'PROD-00001', unit_price: 19.99 };
-      return {
-        order_id: `ORD-${String(i + 1).padStart(5, '0')}`,
-        customer_id: cust.customer_id,
-        product_id: prod.product_id,
-        quantity: rng.int(1, 5),
-        price: prod.unit_price,
-        order_date: '2026-01-01'
-      };
-    });
-  },
-  toCSV(records) {
-    const header = 'order_id,customer_id,product_id,quantity,price,order_date\n';
-    const rows = records.map(r => `${r.order_id},${r.customer_id},${r.product_id},${r.quantity},${r.price},${r.order_date}`).join('\n');
-    return header + rows;
-  }
-};
-
-export const CampaignGenerator = {
-  generate(rng, count) { return []; },
-  toCSV(records) { return ''; }
-};
-
-export const SalesGenerator = {
-  generate(rng, count) { return []; },
-  toCSV(records) { return ''; }
-};
-
-export const SiteGenerator = {
-  generate(rng, count) { return []; },
-  toCSV(records) { return ''; }
-};
-
-export const SensorGenerator = {
-  generate(rng, count) { return []; },
-  toCSV(records) { return ''; }
-};
-
-export const OperationsGenerator = {
-  generate(rng, count) { return []; },
-  toCSV(records) { return ''; }
-};
-
-// =========================================================================
-// PROBLEM INJECTORS INTERFACE STUBS
-// =========================================================================
-
-export const injectMissingValues = (records, rng, config = {}) => {
-  const { columns = [], rate = 0.05 } = config;
-  return records.map(record => {
-    const copy = { ...record };
-    columns.forEach(col => {
-      if (col in copy && rng.next() < rate) {
-        copy[col] = '';
-      }
-    });
-    return copy;
-  });
-};
-
-export const injectInvalidRanges = (records, rng, config = {}) => {
-  const { column, min = 0, max = 100, invalidValue = -999, rate = 0.02 } = config;
-  return records.map(record => {
-    const copy = { ...record };
-    if (column in copy && rng.next() < rate) {
-      copy[column] = invalidValue;
-    }
-    return copy;
-  });
-};
-
-export const injectWrongDataTypes = (records, rng, config = {}) => {
-  const { column, rate = 0.02 } = config;
-  return records.map(record => {
-    const copy = { ...record };
-    if (column in copy && rng.next() < rate) {
-      copy[column] = 'N/A'; // convert to string
-    }
-    return copy;
-  });
-};
-
-export const injectBrokenDates = (records, rng, config = {}) => {
-  const { column, rate = 0.02 } = config;
-  return records.map(record => {
-    const copy = { ...record };
-    if (column in copy && rng.next() < rate) {
-      copy[column] = '2026/02/31'; // invalid date format
-    }
-    return copy;
-  });
-};
-
-export const injectBrokenJoins = (records, rng, config = {}) => {
-  const { column, rate = 0.02 } = config;
-  return records.map(record => {
-    const copy = { ...record };
-    if (column in copy && rng.next() < rate) {
-      copy[column] = 'INVALID-KEY';
-    }
-    return copy;
-  });
-};
-
-export const injectManyToManyJoins = (records, rng, config = {}) => {
-  // Simulates key duplication leading to cardinality explosion during join
-  return records;
-};
-
-export const injectTextInconsistencies = (records, rng, config = {}) => {
-  const { column, rate = 0.05 } = config;
-  return records.map(record => {
-    const copy = { ...record };
-    if (column in copy && typeof copy[column] === 'string' && rng.next() < rate) {
-      // Add inconsistent spaces or lowercase variations
-      copy[column] = rng.next() < 0.5 ? ` ${copy[column]} ` : copy[column].toLowerCase();
-    }
-    return copy;
-  });
-};
-
-export const injectSensorAnomalies = (records, rng, config = {}) => {
-  return records;
-};
+import { injectMissingValues } from './injectors/MissingValuesInjector.js';
+import { injectInvalidRanges } from './injectors/InvalidRangesInjector.js';
+import { injectWrongDataTypes } from './injectors/WrongDataTypesInjector.js';
+import { injectBrokenDates } from './injectors/BrokenDatesInjector.js';
+import { injectBrokenJoins } from './injectors/BrokenJoinsInjector.js';
+import { injectManyToManyJoins } from './injectors/ManyToManyJoinsInjector.js';
+import { injectTextInconsistencies } from './injectors/TextInconsistenciesInjector.js';
+import { injectSensorAnomalies } from './injectors/SensorAnomaliesInjector.js';
 
 // =========================================================================
 // DATASET ENGINE ORCHESTRATOR

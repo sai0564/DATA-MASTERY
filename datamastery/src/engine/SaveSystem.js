@@ -62,7 +62,7 @@ export const SaveSystem = {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.PLAYGROUND || 'datamastery_codes');
       return stored ? JSON.parse(stored) : {};
-    } catch (e) {
+    } catch {
       return {};
     }
   },
@@ -112,6 +112,30 @@ export const SaveSystem = {
     } catch (e) {
       console.warn('SaveSystem: Failed to load settings:', e);
       return {};
+    }
+  },
+
+  /**
+   * Save current mission tracking.
+   */
+  saveCurrentMission(levelId, subLevelId) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_MISSION, JSON.stringify({ levelId, subLevelId }));
+    } catch (e) {
+      console.warn('SaveSystem: Failed to save current mission:', e);
+    }
+  },
+
+  /**
+   * Get current mission tracking.
+   */
+  getCurrentMission() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_MISSION);
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      console.warn('SaveSystem: Failed to load current mission:', e);
+      return null;
     }
   },
 

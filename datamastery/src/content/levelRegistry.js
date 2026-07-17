@@ -3,14 +3,21 @@
  */
 import { level1 } from './levels/level-1.js';
 import { level2 } from './levels/level-2.js';
+import { level3 } from './levels/level-3.js';
+import { level4 } from './levels/level-4.js';
+import { level5 } from './levels/level-5.js';
+import { level6 } from './levels/level-6.js';
+import { level7 } from './levels/level-7.js';
 import { level1Validators } from './validators/level1.js';
+import { level2Validators } from './validators/level2.js';
 import { ValidationEngine } from '../engine/ValidationEngine.js';
 
 // Register all levels
-export const levels = [level1, level2];
+export const levels = [level1, level2, level3, level4, level5, level6, level7];
 
 // Auto-register validators in the ValidationEngine
 ValidationEngine.registerValidators(level1Validators);
+ValidationEngine.registerValidators(level2Validators);
 
 /**
  * Look up a specific level by levelId.

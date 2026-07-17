@@ -1,5 +1,3 @@
-import { SaveSystem } from './SaveSystem.js';
-
 /**
  * ProgressionEngine — Manages learner progression, unlocks, gating, and achievement verification.
  */
@@ -129,41 +127,45 @@ export const ProgressionEngine = {
 
     // --- Validate Achievements ---
 
-    // A. first-run
-    if (subLevelId === '1.1') {
+    // A. first-run: completed the first sub-level of the first level
+    const firstLevel = levelsList[0];
+    const firstSub = firstLevel?.subLevels[0];
+    if (firstSub && level.id === firstLevel.id && subLevelId === firstSub.id) {
       triggerUnlock('first-run');
     }
 
-    // B. no-hints
+    // B. no-hints: solved a sub-level without any hints
     if (hintsUsed === 0) {
       triggerUnlock('no-hints');
     }
 
-    // C. fast-learner
+    // C. fast-learner: solved on first try
     if (attempts === 1) {
       triggerUnlock('fast-learner');
     }
 
-    // D. curious-analyst
+    // D. curious-analyst: multiple attempts or viewed all hints
     if (attempts >= 4 || hintsUsed >= 3) {
       triggerUnlock('curious-analyst');
     }
 
-    // E. performance-review
-    if (subLevelId === '1.7') {
+    // E. performance-review: completed any final level challenge
+    const subLevelDef = level.subLevels.find((s) => s.id === subLevelId);
+    if (subLevelDef && subLevelDef.type === 'challenge') {
       triggerUnlock('performance-review');
     }
 
-    // F. perfect-week (all 1.1 to 1.6 completed without hints)
-    const guidedIds = ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6'];
-    const perfectWeekDone = guidedIds.every(gid => {
-      if (gid === subLevelId) return hintsUsed === 0;
-      const sp = levelProg.subLevels[gid];
+    // F. perfect-week: completed all guided sub-levels of this level without a single hint
+    const guidedSubLevels = level.subLevels.filter((s) => s.type === 'guided');
+    const perfectWeekDone = guidedSubLevels.length > 0 && guidedSubLevels.every((s) => {
+      if (s.id === subLevelId) return hintsUsed === 0;
+      const sp = levelProg.subLevels[s.id];
       return sp && sp.completed && sp.hintsUsed === 0;
     });
     if (perfectWeekDone) {
       triggerUnlock('perfect-week');
     }
+
 
     // 2. Determine unlocks within the current level
     const currentIdx = level.subLevels.findIndex((s) => s.id === subLevelId);

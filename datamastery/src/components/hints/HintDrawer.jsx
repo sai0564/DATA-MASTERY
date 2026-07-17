@@ -13,18 +13,11 @@ import './HintDrawer.css';
  *   onHintUsed: (hintCount: number) => void
  */
 
-const GUIDED_HINT_ORDER = ['taskReminder', 'conceptReminder', 'syntaxClue'];
-const GUIDED_HINT_LABELS = {
-  taskReminder: 'Task Reminder',
-  conceptReminder: 'Concept Reminder',
-  syntaxClue: 'Syntax Clue',
-};
-
-const CHALLENGE_HINT_ORDER = ['workplaceThinking', 'analyticalDirection', 'methodClue'];
-const CHALLENGE_HINT_LABELS = {
+const ALL_HINT_ORDER = ['workplaceThinking', 'conceptReminder', 'technicalDirection'];
+const ALL_HINT_LABELS = {
   workplaceThinking: 'Workplace Thinking',
-  analyticalDirection: 'Analytical Direction',
-  methodClue: 'Method Clue',
+  conceptReminder: 'Concept Reminder',
+  technicalDirection: 'Technical Direction',
 };
 
 function HintDrawer({ hints = {}, missionType = 'guided', onHintUsed }) {
@@ -32,8 +25,8 @@ function HintDrawer({ hints = {}, missionType = 'guided', onHintUsed }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const isChallenge = missionType === 'challenge';
-  const hintOrder = isChallenge ? CHALLENGE_HINT_ORDER : GUIDED_HINT_ORDER;
-  const hintLabels = isChallenge ? CHALLENGE_HINT_LABELS : GUIDED_HINT_LABELS;
+  const hintOrder = ALL_HINT_ORDER;
+  const hintLabels = ALL_HINT_LABELS;
 
   // Filter to only hints that exist
   const availableHints = hintOrder.filter((key) => hints[key]);

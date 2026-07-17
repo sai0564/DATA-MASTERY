@@ -5,8 +5,8 @@ import { getSubLevel, getNextSubLevel, levels } from '../content/levelRegistry.j
 import { DatasetEngine } from '../engine/DatasetEngine.js';
 import { MissionEngine } from '../engine/MissionEngine.js';
 import { RewardEngine } from '../engine/RewardEngine.js';
-import { loadProgress } from '../stores/progressStore.js';
-import { MENTORS, GUIDED_PHASE, CHALLENGE_PHASE } from '../utils/constants.js';
+import { saveCurrentMission } from '../stores/progressStore.js';
+import { MENTORS, GUIDED_PHASE, CHALLENGE_PHASE, ACHIEVEMENT_REGISTRY } from '../utils/constants.js';
 import ChatPanel from '../components/chat/ChatPanel.jsx';
 import CodeEditor from '../components/editor/CodeEditor.jsx';
 import OutputPanel from '../components/editor/OutputPanel.jsx';
@@ -27,7 +27,6 @@ function MissionView() {
   const missionData = getSubLevel(levelId, subLevelId);
   const level = missionData?.level;
   const mission = missionData?.subLevel;
-  const isGuided = mission?.type === 'guided';
   const isChallenge = mission?.type === 'challenge';
 
   // --- States ---
@@ -38,7 +37,7 @@ function MissionView() {
   const [datasetsLoaded, setDatasetsLoaded] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [code, setCode] = useState('');
-  const [challengeStatesReached, setChallengeStatesReached] = useState([]);
+  const [, setChallengeStatesReached] = useState(new Set());
   const [earnedDPState, setEarnedDPState] = useState(null);
   const [levelCompleted, setLevelCompleted] = useState(false);
   
@@ -52,13 +51,21 @@ function MissionView() {
   const phaseRunRef = useRef(false);
   const engineRef = useRef(null);
 
-  // Reset briefing overlay on sub-level path navigation changes
+  // Reset briefing overlay and states on sub-level path navigation changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBriefingAccepted(false);
     setMessages([]);
     setLastExpressionResult(null);
     setOutput({ stdout: '', stderr: '', error: null });
-    phaseRunRef.current = false;
+    setEarnedDPState(null);
+    setLevelCompleted(false);
+    
+    // Save current mission status to progress store
+    if (levelId && subLevelId) {
+      saveCurrentMission(levelId, subLevelId);
+    }
   }, [levelId, subLevelId]);
 
   // --- Floating Toast Unlocks ---
@@ -95,100 +102,6 @@ function MissionView() {
       await new Promise((r) => setTimeout(r, customDelay));
     }
   }, []);
-
-  // --- Prepend dynamic memory greetings from Maya ---
-  const triggerIntroWithMemory = async () => {
-    if (!engineRef.current || !mission) return;
-
-    const prevId = getPreviousSubLevelId(subLevelId);
-    const progress = loadProgress();
-    const levelProgress = progress.levels[levelId];
-    const prevProgress = prevId ? levelProgress?.subLevels[prevId] : null;
-
-    let memoryMessages = [];
-    if (prevProgress && prevProgress.completed) {
-      if (prevProgress.hintsUsed === 0) {
-        memoryMessages.push("I noticed you solved the previous task without any hints! Let's keep that streak going. 🧠");
-      } else {
-        memoryMessages.push("Good job working through that last data task.");
-      }
-
-      if (subLevelId === '1.2') {
-        memoryMessages.push("Now that you know how to load and preview a DataFrame, let's check its shape.");
-      } else if (subLevelId === '1.3') {
-        memoryMessages.push("Yesterday we checked the shape of our dataset. Now let's see what columns we are tracking.");
-      } else if (subLevelId === '1.4') {
-        memoryMessages.push("You already know how to inspect the dimensions and column headers. Next is verifying the data types.");
-      } else if (subLevelId === '1.5') {
-        memoryMessages.push("We verified the data types. Remember, the top rows might look clean, but we should always sample random records.");
-      } else if (subLevelId === '1.6') {
-        memoryMessages.push("Great job sampling the records. Let's run a quick statistical summary before the meeting.");
-      } else if (subLevelId === '1.7') {
-        memoryMessages.push("You've inspected, sized, and summarized data files this week. Time for your performance review.");
-      }
-    }
-
-    const mentor = mission.mentor || level.mentor || 'maya';
-    const isChallenge = mission.type === 'challenge';
-
-    // Initialize messages list with a static objective card or challenge mode alert banner
-    const initialMessages = [];
-    if (isChallenge) {
-      initialMessages.push({
-        id: 'challenge-card',
-        sender: 'system',
-        isChallengeNotification: true,
-        text: `Explore the dataset independently without step-by-step guidance. Standard hints are available, but each hint costs 20 DP.`
-      });
-    } else {
-      initialMessages.push({
-        id: 'mission-card',
-        sender: 'system',
-        isMissionCard: true,
-        mission: {
-          title: mission.title,
-          subtitle: mission.subtitle,
-          learningObjective: mission.learningObjective,
-          estDuration: mission.estDuration
-        }
-      });
-    }
-    setMessages(initialMessages);
-
-    if (!isChallenge) {
-      setPhase(GUIDED_PHASE.SITUATION);
-      const introMessages = [...memoryMessages];
-      if (mission.conversation.situation) {
-        introMessages.push(...mission.conversation.situation);
-      }
-      if (introMessages.length > 0) {
-        await addMessages(introMessages, mentor);
-      }
-
-      setPhase(GUIDED_PHASE.CONCEPT);
-      const concept = mission.conversation.concept;
-      if (concept) {
-        await addMessages([concept.explanation, concept.why], mentor);
-      }
-
-      setPhase(GUIDED_PHASE.TASK);
-      if (mission.conversation.task) {
-        await addMessages([mission.conversation.task], mentor);
-      }
-
-      setPhase(GUIDED_PHASE.ACTIVE);
-    } else {
-      setPhase(CHALLENGE_PHASE.SITUATION);
-      const introMessages = [...memoryMessages];
-      if (mission.conversation.situation) {
-        introMessages.push(...mission.conversation.situation);
-      }
-      if (introMessages.length > 0) {
-        await addMessages(introMessages, mentor);
-      }
-      setPhase(CHALLENGE_PHASE.ACTIVE);
-    }
-  };
 
   // --- Interpolate template variables in mentor text ---
   const interpolate = useCallback((text, vars = {}) => {
@@ -239,6 +152,7 @@ function MissionView() {
         }
       },
       addMessages,
+      setMessages,
       GUIDED_PHASE,
       CHALLENGE_PHASE,
     });
@@ -258,7 +172,7 @@ function MissionView() {
     if (!mission || !datasetsLoaded || phaseRunRef.current || !engineRef.current || !briefingAccepted) return;
     phaseRunRef.current = true;
 
-    triggerIntroWithMemory();
+    engineRef.current.startIntro();
   }, [mission, datasetsLoaded, briefingAccepted]);
 
   // --- Handle code run ---
@@ -291,6 +205,11 @@ function MissionView() {
   // --- Handle code change ---
   const handleCodeChange = useCallback((newCode) => {
     setCode(newCode);
+  }, []);
+
+  // --- Handle dataset inspect trigger from chat bubble link ---
+  const handleDatasetPreview = useCallback((filename) => {
+    setInspectDataset(filename);
   }, []);
 
   // --- Navigate to next sub-level ---
@@ -345,11 +264,16 @@ function MissionView() {
   const isActive = phase === GUIDED_PHASE.ACTIVE || phase === CHALLENGE_PHASE.ACTIVE;
 
   // Calculate dynamic rewards using RewardEngine
-  const rewards = RewardEngine.calculateRewards(mission.points || mission.rewards, {
+  const rewards = RewardEngine.calculateRewards(mission.rewards || mission.points, {
     hintsUsed,
     isChallenge,
   });
   const earnedDp = earnedDPState !== null ? earnedDPState : rewards.earnedDP;
+
+  // Find next level promotion details dynamically
+  const currentLevelIdx = levels.findIndex(l => l.id === levelId);
+  const nextLevel = currentLevelIdx !== -1 && currentLevelIdx < levels.length - 1 ? levels[currentLevelIdx + 1] : null;
+  const promotionTitle = nextLevel ? nextLevel.title : 'Data Mastery Legend';
 
   return (
     <div className="mission-view" id="mission-view-page">
@@ -505,16 +429,22 @@ function MissionView() {
         )}
 
         {isComplete && (
-          <div className="mission-view__success-bar">
-            <span className="mission-view__success-points">
-              +{earnedDp} DP
-            </span>
+          <div className="mission-view__success-bar animate-fade-in-up">
+            <div className="mission-view__success-content">
+              <span className="mission-view__success-icon">🎉</span>
+              <div>
+                <h4 className="mission-view__success-title">Mission Complete!</h4>
+                <p className="mission-view__success-subtitle">
+                  {mentorData?.name} is impressed. Earned <span className="mission-view__success-points">+{earnedDp} DP</span>
+                </p>
+              </div>
+            </div>
             <button
-              className="mission-view__next-btn"
+              className="mission-view__next-btn mission-view__next-btn--pulse"
               onClick={handleNext}
               id="next-mission-btn"
             >
-              Continue →
+              Next Mission →
             </button>
           </div>
         )}
@@ -566,15 +496,15 @@ function MissionView() {
           <div className="level-complete-card">
             <div className="level-complete-card__badge">🏆</div>
             <h2 className="level-complete-card__title">Level Complete!</h2>
-            <p className="level-complete-card__subtitle">You survived your first week at NovaMetrics.</p>
+            <p className="level-complete-card__subtitle">{level.completionSubtitle || 'You survived your first week at NovaMetrics.'}</p>
             <div className="level-complete-card__divider" />
             <p className="level-complete-card__achievement">
-              You inspected, sized, verified, and statistically summarized files like a professional. Maya promoted you!
+              {level.completionPromotionText || `You successfully completed ${level.title}! Your mentor promoted you.`}
             </p>
             <div className="level-complete-card__promo">
               <span className="level-complete-card__promo-icon">⚡</span>
               <span className="level-complete-card__promo-text">
-                Promoted to: <strong>Data Quality Team</strong>
+                Promoted to: <strong>{promotionTitle}</strong>
               </span>
             </div>
             <button
@@ -582,7 +512,7 @@ function MissionView() {
               onClick={() => navigate('/dashboard')}
               id="promotion-confirm-btn"
             >
-              Advance to Level 2
+              Advance to {nextLevel ? nextLevel.title : 'Legend Status'}
             </button>
           </div>
         </div>
@@ -590,52 +520,5 @@ function MissionView() {
     </div>
   );
 }
-
-// Previous Sub-level tracking ID helper
-const getPreviousSubLevelId = (id) => {
-  const mapping = {
-    '1.2': '1.1',
-    '1.3': '1.2',
-    '1.4': '1.3',
-    '1.5': '1.4',
-    '1.6': '1.5',
-    '1.7': '1.6',
-  };
-  return mapping[id] || null;
-};
-
-// Achievement Titles and Descriptions
-const ACHIEVEMENT_REGISTRY = {
-  'first-run': {
-    title: 'First Successful Run',
-    description: 'You loaded your first dataset and printed it using Pandas!',
-    icon: '🚀'
-  },
-  'no-hints': {
-    title: 'No Hint Completion',
-    description: 'Completed a sub-level without using any hints.',
-    icon: '🧠'
-  },
-  'perfect-week': {
-    title: 'Perfect First Week',
-    description: 'Completed all Level 1 guided sub-levels without using a single hint.',
-    icon: '⭐'
-  },
-  'performance-review': {
-    title: 'First Performance Review',
-    description: 'Successfully completed the Level 1 challenge and earned a promotion.',
-    icon: '👔'
-  },
-  'fast-learner': {
-    title: 'Fast Learner',
-    description: 'Solved a sub-level on your very first try.',
-    icon: '⚡'
-  },
-  'curious-analyst': {
-    title: 'Curious Analyst',
-    description: 'Attempted a sub-level 4+ times or viewed all hints.',
-    icon: '🔍'
-  }
-};
 
 export default MissionView;

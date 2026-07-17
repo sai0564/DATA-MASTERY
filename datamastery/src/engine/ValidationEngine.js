@@ -1,10 +1,12 @@
+import { genericValidators } from './validators/genericValidators.js';
+
 /**
  * ValidationEngine — Reusable semantic validation engine.
  * Decouples Pyodide execution output validation from React UI and validator files.
  */
 class ValidationEngineClass {
   constructor() {
-    this.validators = {};
+    this.validators = { ...genericValidators };
   }
 
   /**

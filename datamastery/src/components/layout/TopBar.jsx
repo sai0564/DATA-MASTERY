@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getTotalDP } from '../../stores/progressStore.js';
 import { getSubLevel } from '../../content/levelRegistry.js';
 import { MENTORS } from '../../utils/constants.js';
@@ -37,9 +37,9 @@ function TopBar() {
   ];
 
   return (
-    <header className="topbar" id="topbar">
+    <header className="topbar" id="topbar" role="banner">
       <div className="topbar__inner">
-        <Link to="/dashboard" className="topbar__brand">
+        <Link to="/dashboard" className="topbar__brand" aria-label="Go to Dashboard">
           <span className="topbar__logo">
             <span className="topbar__logo-icon">◆</span>
           </span>

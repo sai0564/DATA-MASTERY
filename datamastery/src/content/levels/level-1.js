@@ -37,15 +37,13 @@ export const level1 = {
         next: 'Check the exact size and dimensions of the dataset.'
       },
 
-      // Business situation introduction messages
       businessSituation: [
         "Morning! Welcome to the analytics team. 👋",
         "I'm Maya — I'll be walking you through your first few tasks.",
-        "Marketing just sent us a customer export.",
-        "Before we do anything with it, I want you to see what the data looks like.",
+        "When someone sends me a CSV, I never trust it immediately.",
+        "The first thing I do is peek inside. Pandas gives us a quick way to do that."
       ],
       
-      // Seeded datasets definition
       datasets: {
         'customers.csv': {
           generator: 'customers',
@@ -62,33 +60,43 @@ export const level1 = {
         situation: [
           "Morning! Welcome to the analytics team. 👋",
           "I'm Maya — I'll be walking you through your first few tasks.",
-          "Marketing just sent us a customer export.",
-          "Before we do anything with it, I want you to see what the data looks like.",
+          "When someone sends me a CSV, I never trust it immediately.",
+          "The first thing I do is peek inside. Pandas gives us a quick way to do that."
         ],
         concept: {
           name: 'head()',
           explanation: "In Pandas, we load CSV files with `pd.read_csv()` and preview the first rows with `head()`.",
-          why: "It gives us a quick look at the data without printing thousands of rows.",
+          why: "It gives us a quick look at the data without crashing our browser by printing thousands of rows.",
         },
         task: "Load the customer file and show me the first few records.",
-        resultReaction: "There we go — our first customer records.",
-        resultExplanation: "Each row is one customer. You can see their ID, name, email, location, and when they signed up. That's the shape of this dataset.",
+        resultReaction: "Perfect. There's our data.",
+        resultExplanation: "Each row is one customer. We have their ID, name, email, location, and signup date. Now we know exactly what the shape of the data looks like.",
       },
       
       hints: {
-        taskReminder: "Maya asked you to load the file and show the first few records.",
-        conceptReminder: "Use pd.read_csv() to load the file, then head() to preview it.",
-        syntaxClue: "Try: df.head()",
+        workplaceThinking: "What's the first thing you want to see when someone hands you a new data file?",
+        conceptReminder: "Use pd.read_csv() to load the file, then call the head() method to preview it.",
+        technicalDirection: "Try: df.head()",
       },
       
       validator: {
         type: 'semantic',
-        fn: 'validateHead',
+        fn: 'validateDataFrame',
+        config: {
+          checkLoaded: true,
+          checkHead: true,
+          loadFeedback: "Make sure you load the CSV file with pd.read_csv() first.",
+          headMissingFeedback: "You've loaded the data, but I can't see it. Try calling df.head() so we can take a look."
+        }
       },
       
       rewards: {
-        basePoints: 50,
-        bonusPoints: 10,
+        base: 50,
+        bonus: 10,
+        firstTry: 15,
+        noHint: 10,
+        challenge: 0,
+        levelCompletion: 0
       },
       
       points: { base: 50, bonus: 10 }, // legacy compatibility fallback
@@ -133,9 +141,10 @@ export const level1 = {
       },
       
       businessSituation: [
-        "Good — you've seen the first few rows.",
-        "Now I need to know the size of this dataset.",
-        "Marketing says we have around 1,200 customers. Let's check.",
+        "Okay, we know it loaded.",
+        "But how big is it? Marketing said there's about 1,200 people.",
+        "If there's 10,000, or 50... we have a problem.",
+        "Let's check the exact size."
       ],
       
       datasets: {
@@ -146,40 +155,51 @@ export const level1 = {
         },
       },
       
-      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Check the size of this dataset\n`,
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('customers.csv')\n\n# Check the exact size of this dataset\n`,
       
       expectedConcepts: ['shape'],
       
       conversation: {
+        memoryText: "You nailed the preview. But before we get comfortable, we need to verify the size.",
         situation: [
-          "Good — you've seen the first few rows.",
-          "Now I need to know the size of this dataset.",
-          "Marketing says we have around 1,200 customers. Let's check.",
+          "Okay, we know it loaded.",
+          "But how big is it? Marketing said there's about 1,200 people.",
+          "If there's 10,000, or 50... we have a problem.",
+          "Let's check the exact size."
         ],
         concept: {
           name: 'shape',
-          explanation: "`shape` tells you how many rows and columns a DataFrame has. It returns a pair like `(1247, 9)`.",
-          why: "Before you start any analysis, you need to know how much data you're working with.",
+          explanation: "`shape` is an attribute that tells you how many rows and columns a DataFrame has. It returns a tuple like `(rows, columns)`.",
+          why: "Before you start writing complex logic, you need to know how much data you're actually processing.",
         },
-        task: "Tell me how many rows and columns this dataset has.",
+        task: "Print the shape of the dataset so we can verify the row count.",
         resultReaction: "{{shape_0}} rows and {{shape_1}} columns.",
-        resultExplanation: "So we have {{shape_0}} customer records, each with {{shape_1}} fields. That matches roughly what Marketing told us.",
+        resultExplanation: "Marketing was right on the money. We have exactly {{shape_0}} customer records, each with {{shape_1}} fields.",
       },
       
       hints: {
-        taskReminder: "Maya needs to know the number of rows and columns.",
-        conceptReminder: "shape gives you (rows, columns) as a tuple.",
-        syntaxClue: "Try: df.shape",
+        workplaceThinking: "Before doing anything, you need to know exactly how much data you're dealing with to spot missing data.",
+        conceptReminder: "Pandas DataFrames have an attribute that returns the dimensions as a tuple.",
+        technicalDirection: "Try: df.shape",
       },
       
       validator: {
         type: 'semantic',
-        fn: 'validateShape',
+        fn: 'validateDataFrame',
+        config: {
+          checkLoaded: true,
+          checkShape: true,
+          shapeFeedback: "You have the DataFrame loaded. Now check its shape — try printing df.shape."
+        }
       },
       
       rewards: {
-        basePoints: 50,
-        bonusPoints: 10,
+        base: 50,
+        bonus: 10,
+        firstTry: 15,
+        noHint: 10,
+        challenge: 0,
+        levelCompletion: 0
       },
       
       points: { base: 50, bonus: 10 },
@@ -223,8 +243,10 @@ export const level1 = {
       },
       
       businessSituation: [
-        "We know how many rows we have.",
-        "Now I want to see what information we're actually tracking about each customer.",
+        "We have the right number of rows.",
+        "Now I need to know what fields they actually tracked.",
+        "First name? Email? Address?",
+        "Print the column headers so we can see what we're working with."
       ],
       
       datasets: {
@@ -240,34 +262,47 @@ export const level1 = {
       expectedConcepts: ['columns'],
       
       conversation: {
+        memoryText: "We know it has 9 columns, but we need to know what they actually are.",
         situation: [
-          "We know how many rows we have.",
-          "Now I want to see what information we're actually tracking about each customer.",
+          "We have the right number of rows.",
+          "Now I need to know what fields they actually tracked.",
+          "First name? Email? Address?",
+          "Print the column headers so we can see what we're working with."
         ],
         concept: {
           name: 'columns',
-          explanation: "`columns` gives you the list of column names in the DataFrame.",
-          why: "You need to know what fields exist before you can start filtering or analyzing.",
+          explanation: "`columns` is an attribute that returns a list of every field name in your dataset.",
+          why: "You can't write a query or filter a dataset if you don't know exactly how the column names are spelled.",
         },
-        task: "Show me the column names in this dataset.",
-        resultReaction: "Right — those are our fields.",
-        resultExplanation: "We're tracking customer IDs, names, emails, age, location, and signup dates. That's a standard customer profile.",
+        task: "Show me the exact column names in this dataset.",
+        resultReaction: "There we go. I see `customer_id`, `email`, and `age`.",
+        resultExplanation: "Notice how they use underscores for spaces, like `first_name` instead of `First Name`? That makes it much easier to write code later.",
       },
       
       hints: {
-        taskReminder: "Maya wants to see what columns exist in the dataset.",
-        conceptReminder: "columns gives you the list of field names.",
-        syntaxClue: "Try: df.columns",
+        workplaceThinking: "You can't analyze what you don't have. Always check what fields exist in a new dataset before planning your work.",
+        conceptReminder: "DataFrames store their column names in a specific attribute, similar to how they store their shape.",
+        technicalDirection: "Try: df.columns",
       },
       
       validator: {
         type: 'semantic',
-        fn: 'validateColumns',
+        fn: 'validateDataFrame',
+        config: {
+          checkLoaded: true,
+          checkColumns: true,
+          requiredColumns: ['customer_id', 'first_name', 'email'],
+          columnsFeedback: "The DataFrame is loaded. Try printing df.columns to see the field names."
+        }
       },
       
       rewards: {
-        basePoints: 50,
-        bonusPoints: 10,
+        base: 50,
+        bonus: 10,
+        firstTry: 15,
+        noHint: 10,
+        challenge: 0,
+        levelCompletion: 0
       },
       
       points: { base: 50, bonus: 10 },
@@ -311,9 +346,10 @@ export const level1 = {
       },
       
       businessSituation: [
-        "One thing I always check early — the data types.",
-        "Sometimes dates arrive as text, or numbers get loaded as strings.",
-        "That causes problems later if you don't catch it now.",
+        "Here is where a lot of people mess up.",
+        "Just because a column is called 'signup_date' doesn't mean Pandas knows it's a date.",
+        "It might have loaded it as raw text.",
+        "We need to verify the data types for every column."
       ],
       
       datasets: {
@@ -329,35 +365,46 @@ export const level1 = {
       expectedConcepts: ['dtypes', 'info'],
       
       conversation: {
+        memoryText: "You have the column names down, but we don't actually know what kind of data is living inside them.",
         situation: [
-          "One thing I always check early — the data types.",
-          "Sometimes dates arrive as text, or numbers get loaded as strings.",
-          "That causes problems later if you don't catch it now.",
+          "Here is where a lot of people mess up.",
+          "Just because a column is called 'signup_date' doesn't mean Pandas knows it's a date.",
+          "It might have loaded it as raw text.",
+          "We need to verify the data types for every column."
         ],
         concept: {
           name: 'dtypes',
-          explanation: "`dtypes` shows you the data type Pandas assigned to each column. You can also use `info()` for a fuller summary.",
-          why: "If Pandas loaded a date column as a string, your time-based analysis won't work until you fix it.",
+          explanation: "`dtypes` shows you the data type Pandas assigned to each column. You can also use `info()` for a more detailed summary.",
+          why: "If you try to add two numbers together, but they are stored as text, you'll get an error. You have to know the types before calculating anything.",
         },
-        task: "Check the data types of each column.",
-        resultReaction: "Good. Take a look at those types.",
-        resultExplanation: "Numbers show as `int64` or `float64`, text as `object`. Notice that `signup_date` is loaded as `object` — that means Pandas treated it as text, not a proper date. We'll fix that later.",
+        task: "Check the data types of each column for me.",
+        resultReaction: "Excellent. Let's look closely at what Pandas decided.",
+        resultExplanation: "Look at `signup_date`. Pandas assigned it `object`, which means it treated it as a text string instead of a real Date. We will have to convert that before we can do time-based analysis.",
       },
       
       hints: {
-        taskReminder: "Maya wants to see the data type of each column.",
-        conceptReminder: "dtypes shows column names and their types. info() gives a broader summary.",
-        syntaxClue: "Try: df.dtypes",
+        workplaceThinking: "If your dates are text, you can't filter by year. Always verify the data types before analyzing.",
+        conceptReminder: "You can check the types of all columns using the dtypes attribute or the info() method.",
+        technicalDirection: "Try: df.dtypes",
       },
       
       validator: {
         type: 'semantic',
-        fn: 'validateDtypes',
+        fn: 'validateDataFrame',
+        config: {
+          checkLoaded: true,
+          checkDtypes: true,
+          dtypesFeedback: "Check the data types — try df.dtypes or df.info()."
+        }
       },
       
       rewards: {
-        basePoints: 50,
-        bonusPoints: 10,
+        base: 50,
+        bonus: 10,
+        firstTry: 15,
+        noHint: 10,
+        challenge: 0,
+        levelCompletion: 0
       },
       
       points: { base: 50, bonus: 10 },
@@ -401,9 +448,10 @@ export const level1 = {
       },
       
       businessSituation: [
-        "Here's something I learned the hard way.",
-        "The first few rows might look clean, but the bottom or middle of the file could be completely different.",
-        "Always check more than just the top.",
+        "The top of the file always looks perfectly clean.",
+        "That's why I never just rely on `head()`.",
+        "I want you to pull a few random records from the middle of the stack.",
+        "You'd be surprised what you find when you look where no one expects."
       ],
       
       datasets: {
@@ -419,35 +467,46 @@ export const level1 = {
       expectedConcepts: ['sample'],
       
       conversation: {
+        memoryText: "We know the shape and types. But remember, the top rows are often misleadingly perfect.",
         situation: [
-          "Here's something I learned the hard way.",
-          "The first few rows might look clean, but the bottom or middle of the file could be completely different.",
-          "Always check more than just the top.",
+          "The top of the file always looks perfectly clean.",
+          "That's why I never just rely on `head()`.",
+          "I want you to pull a few random records from the middle of the stack.",
+          "You'd be surprised what you find when you look where no one expects."
         ],
         concept: {
           name: 'sample()',
-          explanation: "`sample(n)` picks random rows from your DataFrame. For example, `df.sample(5)` will return 5 random rows.",
-          why: "Checking random samples is the best way to get an unbiased view of your dataset's layout and content quality.",
+          explanation: "`sample(n)` picks random rows from your DataFrame. For example, `df.sample(5)` will return 5 random records.",
+          why: "Checking random samples is the best way to get an unbiased view of your dataset's layout and spot missing values deep in the file.",
         },
-        task: "Show me a random sample of 5 rows from the dataset.",
-        resultReaction: "Great job — a random sample gives you a good cross-section.",
-        resultExplanation: "By inspecting random samples, you can catch outliers or anomalies that don't show up in the top rows.",
+        task: "Pull a random sample of 5 rows from the dataset.",
+        resultReaction: "Much better. A completely random slice.",
+        resultExplanation: "By inspecting random samples, you avoid confirmation bias. If a system glitch broke the records on row 800, `head()` would never show it to you. `sample()` gives you a real look.",
       },
       
       hints: {
-        taskReminder: "Maya wants to see a random sample of 5 rows.",
-        conceptReminder: "sample() picks random rows. You can pass the number of rows as an argument.",
-        syntaxClue: "Try: df.sample(5)",
+        workplaceThinking: "Don't fall for confirmation bias by only looking at row 1. Always sample randomly to find hidden edge cases.",
+        conceptReminder: "Pandas can pick random rows for you using a specific method. Pass the number you want inside the parentheses.",
+        technicalDirection: "Try: df.sample(5)",
       },
       
       validator: {
         type: 'semantic',
-        fn: 'validateSample',
+        fn: 'validateDataFrame',
+        config: {
+          checkLoaded: true,
+          checkSample: true,
+          sampleFeedback: "The DataFrame is loaded. Now inspect a random sample of 5 rows using df.sample(5)."
+        }
       },
       
       rewards: {
-        basePoints: 50,
-        bonusPoints: 10,
+        base: 50,
+        bonus: 10,
+        firstTry: 15,
+        noHint: 10,
+        challenge: 0,
+        levelCompletion: 0
       },
       
       points: { base: 50, bonus: 10 },
@@ -489,8 +548,9 @@ export const level1 = {
       },
       
       businessSituation: [
-        "I'm about to go into a meeting.",
-        "I need a quick statistical summary of the customer file — averages, ranges, that kind of thing.",
+        "I have a meeting with Marketing in 5 minutes.",
+        "They want to know the average customer age and if there are any weird outliers.",
+        "Generate a quick statistical summary so I have some hard numbers to show them."
       ],
       
       datasets: {
@@ -506,34 +566,45 @@ export const level1 = {
       expectedConcepts: ['describe'],
       
       conversation: {
+        memoryText: "You've successfully poked around the data. Now let's summarize it.",
         situation: [
-          "I'm about to go into a meeting.",
-          "I need a quick statistical summary of the customer file — averages, ranges, that kind of thing.",
+          "I have a meeting with Marketing in 5 minutes.",
+          "They want to know the average customer age and if there are any weird outliers.",
+          "Generate a quick statistical summary so I have some hard numbers to show them."
         ],
         concept: {
           name: 'describe()',
-          explanation: "`describe()` generates summary statistics for all numerical columns: count, mean, min, max, standard deviation, and quartiles.",
-          why: "It's the fastest way to spot obvious problems — like ages below 0 or above 200.",
+          explanation: "`describe()` generates summary statistics for numerical columns: count, mean, min, max, standard deviation, and quartiles.",
+          why: "It's the fastest way to spot obvious problems — like someone with an age of -5 or 250.",
         },
         task: "Give me a statistical summary of the dataset.",
-        resultReaction: "Perfect — I can take this into the meeting.",
-        resultExplanation: "Look at the age column — the min, max, and mean tell you a lot about your customers. If any of those numbers look wrong, that's a sign of data quality issues. We'll dig into that next week.",
+        resultReaction: "Perfect. I can take this directly into the meeting.",
+        resultExplanation: "Look at the `age` column. The min, max, and mean tell a complete story. If any of those numbers looked physically impossible, we'd immediately know we had a data quality issue to fix.",
       },
       
       hints: {
-        taskReminder: "Maya needs a statistical summary for the meeting.",
-        conceptReminder: "describe() gives count, mean, std, min, 25%, 50%, 75%, max.",
-        syntaxClue: "Try: df.describe()",
+        workplaceThinking: "When a stakeholder asks for a quick overview of numerical data, always start with descriptive statistics.",
+        conceptReminder: "Pandas has a built-in method that instantly computes count, mean, standard deviation, mins, and maxes.",
+        technicalDirection: "Try: df.describe()",
       },
       
       validator: {
         type: 'semantic',
-        fn: 'validateDescribe',
+        fn: 'validateDataFrame',
+        config: {
+          checkLoaded: true,
+          checkDescribe: true,
+          describeFeedback: "Generate a statistical summary of the dataset. Try df.describe()."
+        }
       },
       
       rewards: {
-        basePoints: 50,
-        bonusPoints: 10,
+        base: 50,
+        bonus: 10,
+        firstTry: 15,
+        noHint: 10,
+        challenge: 0,
+        levelCompletion: 0
       },
       
       points: { base: 50, bonus: 10 },
@@ -554,8 +625,8 @@ export const level1 = {
       subLevel: '1.7',
       type: 'challenge',
       mentor: 'maya',
-      title: 'First Week Performance Review',
-      subtitle: 'Explore an unfamiliar dataset independently',
+      title: 'Customer Count Mystery',
+      subtitle: 'Investigate conflicting reports',
       learningObjective: 'Independently load, size-check, field-check, type-check, and summarize a new dataset',
       estDuration: '10m',
 
@@ -575,11 +646,11 @@ export const level1 = {
       },
       
       businessSituation: [
-        "New file just came in.",
-        "This is a sales export — different from the customer data.",
-        "📎 sales_sample.csv",
-        "Take a look before you touch anything.",
-        "Tell me what we're working with.",
+        "We have a problem.",
+        "Finance says we had 480 paying customers this week.",
+        "The CRM dashboard says we had 500. One of them is wrong.",
+        "I dropped a new file in your workspace: `sales_sample.csv`.",
+        "Don't guess. Investigate it using the tools you learned this week.",
       ],
       
       datasets: {
@@ -590,36 +661,71 @@ export const level1 = {
         },
       },
       
-      starterCode: `import pandas as pd\n\n# A new file has arrived — investigate it\n`,
+      starterCode: `import pandas as pd\n\n# Investigate the new file to find the truth\n`,
       
-      expectedConcepts: ['read_csv', 'head', 'shape', 'columns', 'dtypes', 'tail', 'sample', 'describe'],
+      expectedConcepts: ['read_csv', 'head', 'shape', 'columns', 'dtypes', 'describe'],
       
       conversation: {
+        memoryText: "You've survived your first week. Now it's time for a real-world test.",
         situation: [
-          "New file just came in.",
-          "This is a sales export — different from the customer data.",
-          "📎 sales_sample.csv",
-          "Take a look before you touch anything.",
-          "Tell me what we're working with.",
+          "We have a problem.",
+          "Finance says we had 480 paying customers this week.",
+          "The CRM dashboard says we had 500. One of them is wrong.",
+          "I dropped a new file in your workspace: `sales_sample.csv`.",
+          "Don't guess. Investigate it using the tools you learned this week.",
         ],
         stateResponses: {
-          'loaded': "Good, you loaded it. What can you tell me about it?",
-          'checked-size': "Right. Now what kind of data are we looking at?",
-          'checked-columns': "Good — you know the fields. What types did Pandas assign?",
-          'checked-types': "Any first impressions from the numbers?",
-          'summarized': "You've survived your first week at NovaMetrics.\n\nYou now inspect unfamiliar data like an analyst instead of guessing.\n\nTomorrow you'll join the Data Quality team.",
+          'loaded': "You loaded the file. Excellent. What does it look like?",
+          'checked-size': "Good, you found the row count. Does it match Finance or the CRM?",
+          'checked-columns': "You see the fields. What kinds of data are we storing?",
+          'checked-types': "Nice catch on the types. Anything stand out about the numbers?",
+          'summarized': "Fantastic work.\n\nYou investigated an unfamiliar file from scratch without me holding your hand.\n\nYou're officially ready for the Data Quality team.",
         },
       },
       
       hints: {
-        workplaceThinking: "If someone hands you an unfamiliar data file, what would you want to know first?",
-        analyticalDirection: "Start with the basics: how big is it, what columns does it have, what types are the columns.",
-        methodClue: "This week you learned: head(), shape, columns, dtypes, tail(), sample(), describe(). Which ones help here?",
+        workplaceThinking: "When handed a mystery file, don't just stare at it. Run through your standard inspection checklist to see what you are working with.",
+        conceptReminder: "Load it, check the size, look at the columns, verify the types, and run a summary.",
+        technicalDirection: "You'll need pd.read_csv(), shape, columns, dtypes, and describe().",
       },
       
       validator: {
         type: 'multi-step',
-        fn: 'validateFirstWeekChallenge',
+        fn: 'validateMultiStage',
+        config: {
+          stages: [
+            {
+              state: 'loaded',
+              type: 'variable_type',
+              target: 'DataFrame',
+              feedback: 'Start by loading the CSV file with pd.read_csv().'
+            },
+            {
+              state: 'checked-size',
+              type: 'regex_or_stdout',
+              target: '\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)|shape|500',
+              feedback: 'You loaded the data. What else do you need to know about this file?'
+            },
+            {
+              state: 'checked-columns',
+              type: 'regex_or_stdout',
+              target: 'customer_id|columns|first_name|email|age|city|state|country|signup_date',
+              feedback: 'You know the size. What about the column names?'
+            },
+            {
+              state: 'checked-types',
+              type: 'regex_or_stdout',
+              target: 'int64|float64|object|dtype',
+              feedback: 'You have the columns. What types did Pandas detect?'
+            },
+            {
+              state: 'summarized',
+              type: 'regex_or_stdout',
+              target: 'mean',
+              feedback: 'Types are checked. Can you get a statistical summary?'
+            }
+          ]
+        },
         states: [
           { id: 'loaded', description: 'Loaded the CSV file' },
           { id: 'checked-size', description: 'Checked shape or row count' },
@@ -630,8 +736,12 @@ export const level1 = {
       },
       
       rewards: {
-        basePoints: 100,
-        bonusPoints: 50,
+        base: 100,
+        bonus: 50,
+        firstTry: 20,
+        noHint: 20,
+        challenge: 50,
+        levelCompletion: 100
       },
       
       points: { base: 100, bonus: 50 },

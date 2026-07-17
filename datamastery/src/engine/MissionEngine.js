@@ -17,6 +17,7 @@ export class MissionEngine {
     levelsList,
     onStateUpdate, // Callback to sync state to UI: (stateUpdate) => void
     addMessages,   // UI addMessages function
+    setMessages,   // UI setMessages function
     GUIDED_PHASE,
     CHALLENGE_PHASE,
   }) {
@@ -33,6 +34,7 @@ export class MissionEngine {
 
     this.conversationEngine = new ConversationEngine({
       addMessages,
+      setMessages,
       setPhase: (phase) => this.updateUIState({ phase }),
       mentor,
       GUIDED_PHASE,
@@ -77,7 +79,14 @@ export class MissionEngine {
    */
   async startIntro() {
     if (!this.mission) return;
-    await this.conversationEngine.startMissionIntro(this.mission);
+    const progress = SaveSystem.getProgress();
+    await this.conversationEngine.startMissionIntro(
+      this.mission,
+      progress,
+      this.subLevelId,
+      this.levelId,
+      this.levelsList
+    );
   }
 
   /**
@@ -114,6 +123,7 @@ export class MissionEngine {
       },
       {
         type: this.mission.type,
+        config: this.mission.validation?.config,
       }
     );
 

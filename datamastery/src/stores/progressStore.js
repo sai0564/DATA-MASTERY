@@ -135,3 +135,18 @@ export function getLevelStats(levelId) {
     status: levelProgress.status,
   };
 }
+
+/**
+ * Save current mission.
+ */
+export function saveCurrentMission(levelId, subLevelId) {
+  SaveSystem.saveCurrentMission(levelId, subLevelId);
+}
+
+/**
+ * Get current mission.
+ */
+export function getCurrentMission() {
+  return SaveSystem.getCurrentMission();
+}
+
