@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect } from 'react';
 import { usePyodide } from '../hooks/usePyodide.js';
 
-const PyodideContext = createContext(null);
+export const PyodideContext = createContext(null);
 
 export function PyodideProvider({ children }) {
   const pyodide = usePyodide();

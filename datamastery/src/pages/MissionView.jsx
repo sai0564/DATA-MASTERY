@@ -184,16 +184,15 @@ function MissionView() {
     // Reset old result before executing
     setLastExpressionResult(null);
 
-    // Call execution
-    const runResult = await pyodide.runCode(codeToRun);
-    
-    // Save evaluated expression result to notebook state
-    if (runResult.lastExpressionResult) {
-      setLastExpressionResult(runResult.lastExpressionResult);
-    }
+    // Run + validate in a single execution. MissionEngine.runAndValidate is the
+    // sole owner of code execution, so the learner's code runs exactly once and
+    // the conversation always advances when the active step is satisfied.
+    const result = await engineRef.current.runAndValidate(codeToRun, hintsUsed, interpolate);
 
-    // Call Validation and handle engine reaction flow
-    await engineRef.current.runAndValidate(codeToRun, hintsUsed, interpolate);
+    // Save evaluated expression result (if any) to notebook state
+    if (result && result.lastExpressionResult) {
+      setLastExpressionResult(result.lastExpressionResult);
+    }
   }, [pyodide, code, hintsUsed, interpolate]);
 
   // --- Handle hint used ---
