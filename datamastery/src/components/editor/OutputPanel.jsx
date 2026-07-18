@@ -8,6 +8,7 @@ function OutputPanel({
   stdout = '',
   stderr = '',
   error = null,
+  stateDelta = null,
   isRunning = false,
   lastExpressionResult = null,
   isComplete = false,
@@ -203,6 +204,79 @@ function OutputPanel({
     }
   };
 
+  const hasExecuted = Boolean(error || stateDelta || stdout || stderr || lastExpressionResult);
+
+  // Render explicit execution feedback banner / card
+  const renderExecutionFeedback = () => {
+    if (!hasExecuted) return null;
+
+    if (error) {
+      return (
+        <div className="execution-status-card execution-status-card--error animate-fade-in" id="execution-feedback-card">
+          <div className="execution-status-card__header">
+            <span className="execution-status-card__badge">❌ Execution Failed</span>
+          </div>
+        </div>
+      );
+    }
+
+    const createdDataFrames = stateDelta?.created?.filter(v => v.type === 'DataFrame') || [];
+    const isDataFrameLoaded = createdDataFrames.length > 0;
+    
+    const badgeText = isDataFrameLoaded ? '✓ DataFrame loaded successfully.' : '✓ Executed successfully.';
+    const detailLines = [];
+
+    // 1. Variable creation messages
+    if (stateDelta?.created?.length > 0) {
+      stateDelta.created.forEach(v => {
+        detailLines.push(`Variable '${v.name}' created.`);
+        if (v.type === 'DataFrame' && v.rows !== undefined && v.cols !== undefined) {
+          detailLines.push(`Rows: ${v.rows}`);
+          detailLines.push(`Columns: ${v.cols}`);
+        }
+      });
+    }
+
+    // 2. Variable update messages
+    if (stateDelta?.updated?.length > 0) {
+      stateDelta.updated.forEach(v => {
+        detailLines.push(`Variable '${v.name}' updated.`);
+        if (v.type === 'DataFrame' && v.rows !== undefined && v.cols !== undefined) {
+          detailLines.push(`Rows: ${v.rows}`);
+          detailLines.push(`Columns: ${v.cols}`);
+        }
+      });
+    }
+
+    // 3. Import statements message
+    const hasImports = stateDelta?.imports?.length > 0;
+    if (hasImports && detailLines.length === 0 && !stdout && !lastExpressionResult) {
+      detailLines.push('No output (expected for import statements).');
+    }
+
+    // 4. Fallback no output message
+    if (detailLines.length === 0 && !stdout && !lastExpressionResult) {
+      detailLines.push('No output produced.');
+    }
+
+    return (
+      <div className="execution-status-card execution-status-card--success animate-fade-in" id="execution-feedback-card">
+        <div className="execution-status-card__header">
+          <span className="execution-status-card__badge">{badgeText}</span>
+        </div>
+        {detailLines.length > 0 && (
+          <div className="execution-status-card__details">
+            {detailLines.map((line, idx) => (
+              <div key={idx} className="execution-status-card__detail-line">
+                {line}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="output-panel" id="output-panel">
       <div className="output-panel__header">
@@ -223,12 +297,14 @@ function OutputPanel({
           </div>
         )}
 
-        {!isRunning && !stdout && !stderr && !error && !lastExpressionResult && (
+        {!isRunning && !hasExecuted && (
           <div className="output-panel__empty">
             <div className="output-panel__empty-icon">📂</div>
             <p>Run your script to evaluate calculations here.</p>
           </div>
         )}
+
+        {!isRunning && renderExecutionFeedback()}
 
         {/* Stdout stream log */}
         {stdout && (
