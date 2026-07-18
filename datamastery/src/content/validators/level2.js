@@ -7,7 +7,7 @@
 
 export const level2Validators = {
   // 2.2 Detect Missing Data
-  validateLevel2_2: async (code, context) => {
+  validateLevel2_2: async (executionResult, context) => {
     const pyodide = context.pyodide;
     
     // We expect the user to create a dataframe called 'broken_leads' 
@@ -37,7 +37,7 @@ result
   },
 
   // 2.3 Fill Missing Data
-  validateLevel2_3: async (code, context) => {
+  validateLevel2_3: async (executionResult, context) => {
     const pyodide = context.pyodide;
     const checkScript = `
 if 'df' not in globals():
@@ -62,7 +62,7 @@ result
   },
 
   // 2.4 Remove Missing Data
-  validateLevel2_4: async (code, context) => {
+  validateLevel2_4: async (executionResult, context) => {
     const pyodide = context.pyodide;
     const checkScript = `
 if 'clean_df' not in globals():
@@ -88,7 +88,7 @@ result
   },
 
   // 2.5 Duplicate Records
-  validateLevel2_5: async (code, context) => {
+  validateLevel2_5: async (executionResult, context) => {
     const pyodide = context.pyodide;
     const checkScript = `
 if 'clean_df' not in globals():
@@ -114,7 +114,7 @@ result
   },
 
   // 2.6 Data Types
-  validateLevel2_6: async (code, context) => {
+  validateLevel2_6: async (executionResult, context) => {
     const pyodide = context.pyodide;
     const checkScript = `
 if 'df' not in globals():
@@ -139,7 +139,7 @@ result
   },
 
   // 2.7 Challenge
-  validateLevel2_7: async (code, context) => {
+  validateLevel2_7: async (executionResult, context) => {
     const pyodide = context.pyodide;
     const checkScript = `
 if 'final_df' not in globals():
