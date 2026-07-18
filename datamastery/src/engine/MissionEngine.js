@@ -174,7 +174,7 @@ export class MissionEngine {
 
     this.attempts += 1;
     this.updateUIState({
-      output: { stdout: '', stderr: '', error: null },
+      output: { stdout: '', stderr: '', error: null, stateDelta: null },
     });
 
     // Single source of truth for execution: the code is run exactly once here.
@@ -187,13 +187,23 @@ export class MissionEngine {
         this.failedValidationAttempts += 1;
       }
       this.updateUIState({
-        output: { stdout: result.stdout || '', stderr: result.stderr || '', error: result.error },
+        output: {
+          stdout: result.stdout || '',
+          stderr: result.stderr || '',
+          error: result.error,
+          stateDelta: result.stateDelta || null,
+        },
       });
       return result;
     }
 
     this.updateUIState({
-      output: { stdout: result.stdout, stderr: result.stderr, error: null },
+      output: {
+        stdout: result.stdout,
+        stderr: result.stderr,
+        error: null,
+        stateDelta: result.stateDelta || null,
+      },
     });
 
     const activeStep = this.mission.type === 'guided' ? this.getActiveGuidedStep() : null;

@@ -92,6 +92,60 @@
   opacity: 0.5;
 }
 
+/* Execution Status Feedback Card */
+.execution-status-card {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  width: 100%;
+}
+
+.execution-status-card--success {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.execution-status-card--error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.execution-status-card__header {
+  display: flex;
+  align-items: center;
+}
+
+.execution-status-card__badge {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.execution-status-card--success .execution-status-card__badge {
+  color: var(--success);
+}
+
+.execution-status-card--error .execution-status-card__badge {
+  color: #fca5a5;
+}
+
+.execution-status-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.execution-status-card__detail-line {
+  line-height: 1.4;
+}
+
 /* Stdout and stream headers */
 .output-panel__stdout-box,
 .output-panel__stderr-box,

@@ -74,6 +74,101 @@ def _dm_serialize_value(val):
             'value_type': 'error'
         }
 
+_dm_skip = {'sys', 'StringIO', 'json', 'pd', 'np', 'os', 'io', 'ast',
+            'pandas', 'numpy', 'builtins', '__builtins__'}
+
+def _dm_snapshot_vars(globals_dict):
+    snapshot = {}
+    for name, val in list(globals_dict.items()):
+        if name.startswith('_') or name in _dm_skip:
+            continue
+        try:
+            val_type = type(val).__name__
+            if isinstance(val, pd.DataFrame):
+                snapshot[name] = {
+                    'type': 'DataFrame',
+                    'id': id(val),
+                    'shape': list(val.shape),
+                    'cols': [str(c) for c in val.columns]
+                }
+            elif isinstance(val, pd.Series):
+                snapshot[name] = {
+                    'type': 'Series',
+                    'id': id(val),
+                    'shape': list(val.shape),
+                    'dtype': str(val.dtype)
+                }
+            elif isinstance(val, np.ndarray):
+                snapshot[name] = {
+                    'type': 'ndarray',
+                    'id': id(val),
+                    'shape': list(val.shape)
+                }
+            else:
+                snapshot[name] = {
+                    'type': val_type,
+                    'id': id(val),
+                    'repr': repr(val) if len(repr(val)) < 200 else str(type(val))
+                }
+        except Exception:
+            pass
+    return snapshot
+
+def _dm_detect_imports(code):
+    imported_modules = []
+    try:
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imported_modules.append(alias.asname or alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ''
+                for alias in node.names:
+                    imported_modules.append(f"{module}.{alias.name}" if module else alias.name)
+    except Exception:
+        pass
+    return imported_modules
+
+def _dm_compute_state_delta(before_snapshot, globals_dict, code):
+    created = []
+    updated = []
+    current_snapshot = _dm_snapshot_vars(globals_dict)
+    
+    for name, curr_info in current_snapshot.items():
+        if name not in before_snapshot:
+            var_data = {'name': name, 'type': curr_info['type'], 'action': 'created'}
+            if curr_info['type'] == 'DataFrame':
+                var_data['rows'] = curr_info['shape'][0]
+                var_data['cols'] = curr_info['shape'][1]
+            elif curr_info['type'] == 'Series':
+                var_data['rows'] = curr_info['shape'][0]
+            created.append(var_data)
+        else:
+            prev_info = before_snapshot[name]
+            is_changed = (
+                curr_info['type'] != prev_info['type'] or
+                curr_info['id'] != prev_info['id'] or
+                curr_info.get('shape') != prev_info.get('shape') or
+                curr_info.get('repr') != prev_info.get('repr')
+            )
+            if is_changed:
+                var_data = {'name': name, 'type': curr_info['type'], 'action': 'updated'}
+                if curr_info['type'] == 'DataFrame':
+                    var_data['rows'] = curr_info['shape'][0]
+                    var_data['cols'] = curr_info['shape'][1]
+                elif curr_info['type'] == 'Series':
+                    var_data['rows'] = curr_info['shape'][0]
+                updated.append(var_data)
+                
+    imports = _dm_detect_imports(code)
+    
+    return {
+        'created': created,
+        'updated': updated,
+        'imports': imports
+    }
+
 def _dm_run_cell(code, globals_dict):
     tree = ast.parse(code)
     if not tree.body:
@@ -122,21 +217,23 @@ async function runCode(code) {
   }
 
   try {
-    // Set up stdout/stderr capture
+    // Set up stdout/stderr capture and take global variable snapshot
     pyodide.runPython(`
 _dm_stdout = StringIO()
 _dm_stderr = StringIO()
 sys.stdout = _dm_stdout
 sys.stderr = _dm_stderr
+_dm_before_snapshot = _dm_snapshot_vars(globals())
     `);
 
     // Feed user code as global variable to run safely via AST compiler
     pyodide.globals.set("_dm_code_to_run", code);
 
-    // Run the user's code using the AST execution cell helper
+    // Run the user's code using the AST execution cell helper and compute state changes
     await pyodide.runPythonAsync(`
 _dm_last_val = _dm_run_cell(_dm_code_to_run, globals())
 _dm_serialized_last_val = _dm_serialize_value(_dm_last_val)
+_dm_state_delta = _dm_compute_state_delta(_dm_before_snapshot, globals(), _dm_code_to_run)
     `);
 
     // Capture stdout/stderr
@@ -149,9 +246,12 @@ sys.stdout = sys.__stdout__
 sys.stderr = sys.__stderr__
     `);
 
-    // Read notebook evaluation results
+    // Read notebook evaluation results and state delta
     const lastResultJson = pyodide.runPython('json.dumps(_dm_serialized_last_val)');
     const lastExpressionResult = JSON.parse(lastResultJson);
+
+    const stateDeltaJson = pyodide.runPython('json.dumps(_dm_state_delta)');
+    const stateDelta = JSON.parse(stateDeltaJson);
 
     // Extract user-defined variables for validation
     const variablesJson = pyodide.runPython(`
@@ -203,7 +303,7 @@ json.dumps(_dm_vars)
     `);
 
     const variables = JSON.parse(variablesJson);
-    self.postMessage({ type: 'result', stdout, stderr, variables, lastExpressionResult });
+    self.postMessage({ type: 'result', stdout, stderr, variables, lastExpressionResult, stateDelta });
 
   } catch (error) {
     // Restore stdout/stderr on error

@@ -57,15 +57,19 @@ function MissionView() {
     setBriefingAccepted(false);
     setMessages([]);
     setLastExpressionResult(null);
-    setOutput({ stdout: '', stderr: '', error: null });
+    setOutput({ stdout: '', stderr: '', error: null, stateDelta: null });
     setEarnedDPState(null);
     setLevelCompleted(false);
+
+    if (pyodide && pyodide.isReady) {
+      pyodide.resetNamespace().catch(() => {});
+    }
     
     // Save current mission status to progress store
     if (levelId && subLevelId) {
       saveCurrentMission(levelId, subLevelId);
     }
-  }, [levelId, subLevelId]);
+  }, [levelId, subLevelId, pyodide]);
 
   // --- Floating Toast Unlocks ---
   const triggerAchievementToast = useCallback((achievementId) => {
@@ -499,6 +503,7 @@ function MissionView() {
             stdout={output.stdout}
             stderr={output.stderr}
             error={output.error}
+            stateDelta={output.stateDelta}
             isRunning={pyodide.isRunning}
             lastExpressionResult={lastExpressionResult}
             isComplete={isComplete}
