@@ -170,13 +170,16 @@ export class MissionEngine {
    * Execute code written by the user and validate results.
    */
   async runAndValidate(codeToRun, hintsUsed, interpolate) {
-    if (!this.pyodide.isReady || !this.mission) return;
+    if (!this.pyodide.isReady || !this.mission) return null;
 
     this.attempts += 1;
     this.updateUIState({
       output: { stdout: '', stderr: '', error: null },
     });
 
+    // Single source of truth for execution: the code is run exactly once here.
+    // The Run button delegates to this method rather than re-running the code
+    // itself, so we never execute the learner's code twice.
     const result = await this.pyodide.runCode(codeToRun);
 
     if (result.error) {
@@ -186,7 +189,7 @@ export class MissionEngine {
       this.updateUIState({
         output: { stdout: result.stdout || '', stderr: result.stderr || '', error: result.error },
       });
-      return;
+      return result;
     }
 
     this.updateUIState({
@@ -230,7 +233,7 @@ export class MissionEngine {
 
     if (this.mission.type === 'guided' && flowResult.stepPassed && !flowResult.missionComplete) {
       this.activeGuidedStepIndex += 1;
-      return;
+      return result;
     }
 
     if (flowResult.missionComplete) {
@@ -283,6 +286,8 @@ export class MissionEngine {
         challengeStatesReached: progress.levels[this.levelId].challengeStates[this.subLevelId].reachedStates,
       });
     }
+
+    return result;
   }
 }
 export default MissionEngine;

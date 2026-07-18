@@ -70,6 +70,36 @@ describe('ConversationEngine', () => {
     expect(addMessages.mock.calls.flat()).not.toContain('Perfect.');
   });
 
+  it('includes the scaffold note on the first guided step when configured', async () => {
+    const { engine, addMessages } = createEngine();
+    const mission = {
+      type: 'guided',
+      title: 'Your First Dataset',
+      subtitle: 'Loading and previewing',
+      learningObjective: 'Load and preview data',
+      estDuration: '3m',
+      datasetCard: { filename: 'customers.csv' },
+      conversation: {
+        situation: ['Morning! 👋 Welcome to NovaMetrics.'],
+        concept: { explanation: 'Use head().', why: 'It previews rows.' },
+        task: 'Load the customer file and show me the first few records.',
+        scaffoldNote: 'The code has been scaffolded for you. Click `Run` to execute it.',
+        resultReaction: 'Perfect.',
+        resultExplanation: 'Now we know what it looks like.',
+      },
+      validator: {
+        fn: 'validateDataFrame',
+        config: { checkLoaded: true, checkHead: true },
+      },
+    };
+
+    await engine.startMissionIntro(mission, {}, '1.1', 'level-1', []);
+
+    const allMessages = addMessages.mock.calls.flat(2);
+    expect(allMessages).toContain('Your first task:\nLoad customers.csv using pandas.');
+    expect(allMessages).toContain('The code has been scaffolded for you. Click `Run` to execute it.');
+  });
+
   it('reveals the next guided step only after the active validator passes', async () => {
     const { engine, addMessages, setPhase } = createEngine();
     const mission = {

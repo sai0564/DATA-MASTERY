@@ -69,6 +69,10 @@ export const level1 = {
           why: "It gives us a quick look at the data without crashing our browser by printing thousands of rows.",
         },
         task: "Load the customer file and show me the first few records.",
+        // Shown on the first guided step when the starter code already
+        // satisfies the instruction, so the learner isn't told to do work
+        // that's already scaffolded for them.
+        scaffoldNote: "The code has been scaffolded for you. Click `Run` to execute it.",
         resultReaction: "Perfect. There's our data.",
         resultExplanation: "Each row is one customer. We have their ID, name, email, location, and signup date. Now we know exactly what the shape of the data looks like.",
       },
