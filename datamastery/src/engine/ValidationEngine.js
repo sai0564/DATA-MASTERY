@@ -29,7 +29,7 @@ class ValidationEngineClass {
    *   { stdout, stderr, variables, error }
    * @param {object} context - Context containing additional configuration or state
    *   { type: 'guided' | 'challenge', currentState?: string }
-   * @returns {object} Standard validation result
+   * @returns {Promise<object>} Standard validation result
    *   {
    *     passed: boolean,
    *     feedback: string,
@@ -39,26 +39,30 @@ class ValidationEngineClass {
    *     templateVars?: object
    *   }
    */
-  validate(validatorName, executionResult, context = {}) {
+  async validate(validatorName, executionResult, context = {}) {
     const validatorFn = this.validators[validatorName];
 
     if (!validatorFn) {
       console.warn(`ValidationEngine: Validator "${validatorName}" not found.`);
       return {
         passed: false,
-        feedback: "Internal Error: Validator configuration missing.",
+        feedback: 'Internal Error: Validator configuration missing.',
       };
     }
 
     try {
       // Execute the registered validator function.
       // Reusable validators inspect stdout and python variables semantic state.
-      const result = validatorFn(executionResult, context);
+      const rawResult = validatorFn(executionResult, context);
+      const result = typeof rawResult?.then === 'function' ? await rawResult : rawResult;
 
-      // Normalize result shape
+      // Normalize result shape. Some legacy validators return { success, message }.
+      const passed = result.passed !== undefined ? result.passed : result.success;
+      const feedback = result.feedback !== undefined ? result.feedback : result.message;
+
       return {
-        passed: !!result.passed,
-        feedback: result.feedback || "",
+        passed: !!passed,
+        feedback: feedback || '',
         reachedStates: result.reachedStates || [],
         currentState: result.currentState || null,
         nextState: result.nextState || null,
@@ -68,7 +72,7 @@ class ValidationEngineClass {
       console.error(`ValidationEngine: Error running validator "${validatorName}":`, e);
       return {
         passed: false,
-        feedback: "There was an error checking your solution. Please double check your code syntax.",
+        feedback: 'There was an error checking your solution. Please double check your code syntax.',
       };
     }
   }

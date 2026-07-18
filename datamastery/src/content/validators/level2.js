@@ -31,7 +31,7 @@ result
     try {
       const res = await pyodide.runPythonAsync(checkScript);
       return res.toJs();
-    } catch (e) {
+    } catch {
       return { success: false, message: "Syntax error in your Python code." };
     }
   },
@@ -56,7 +56,7 @@ result
     try {
       const res = await pyodide.runPythonAsync(checkScript);
       return res.toJs();
-    } catch (e) {
+    } catch {
       return { success: false, message: "Syntax error in your Python code." };
     }
   },
@@ -82,7 +82,7 @@ result
     try {
       const res = await pyodide.runPythonAsync(checkScript);
       return res.toJs();
-    } catch (e) {
+    } catch {
       return { success: false, message: "Syntax error in your Python code." };
     }
   },
@@ -108,7 +108,7 @@ result
     try {
       const res = await pyodide.runPythonAsync(checkScript);
       return res.toJs();
-    } catch (e) {
+    } catch {
       return { success: false, message: "Syntax error in your Python code." };
     }
   },
@@ -133,7 +133,7 @@ result
     try {
       const res = await pyodide.runPythonAsync(checkScript);
       return res.toJs();
-    } catch (e) {
+    } catch {
       return { success: false, message: "Syntax error in your Python code." };
     }
   },
@@ -181,7 +181,7 @@ result
     try {
       const res = await pyodide.runPythonAsync(checkScript);
       return res.toJs();
-    } catch (e) {
+    } catch {
       return { success: false, message: "Syntax error in your Python code." };
     }
   }
