@@ -6,6 +6,7 @@ import { DatasetEngine } from '../engine/DatasetEngine.js';
 import { MissionEngine } from '../engine/MissionEngine.js';
 import { RewardEngine } from '../engine/RewardEngine.js';
 import { saveCurrentMission } from '../stores/progressStore.js';
+import { SaveSystem } from '../engine/SaveSystem.js';
 import { MENTORS, GUIDED_PHASE, CHALLENGE_PHASE, ACHIEVEMENT_REGISTRY } from '../utils/constants.js';
 import ChatPanel from '../components/chat/ChatPanel.jsx';
 import CodeEditor from '../components/editor/CodeEditor.jsx';
@@ -160,6 +161,18 @@ function MissionView() {
       CHALLENGE_PHASE,
     });
   }, [levelId, subLevelId, missionData, pyodide, addMessages, triggerAchievementToast]);
+
+  // Load previously saved code for this mission (improves editor sync)
+  useEffect(() => {
+    if (!mission || !levelId || !subLevelId) return;
+    
+    const savedCode = SaveSystem.getCode(levelId, subLevelId);
+    if (savedCode && editorRef.current?.setCode) {
+      // Use the new setCode method exposed by CodeEditor ref
+      editorRef.current.setCode(savedCode);
+      setCode(savedCode);
+    }
+  }, [levelId, subLevelId, mission]);
 
   // --- Generate and load datasets ---
   useEffect(() => {

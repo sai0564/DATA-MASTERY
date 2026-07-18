@@ -9,7 +9,7 @@ function App() {
   // Only wrap with PyodideProvider when we actually need Python execution
   // (mission and playground pages). Landing, dashboard, and level detail don't need it.
   const needsPyodide =
-    (location.pathname.startsWith('/level/') && location.pathname.split('/').length >= 4) ||
+    location.pathname.startsWith('/level/') && location.pathname.split('/').length >= 4 ||
     location.pathname.startsWith('/playground');
 
   const content = (

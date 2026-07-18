@@ -1,7 +1,0 @@
-playwright.config.js
-vitest.config.js
-public/
-tests/
-dist/
-src/engine/injectors/
-src/engine/generators/

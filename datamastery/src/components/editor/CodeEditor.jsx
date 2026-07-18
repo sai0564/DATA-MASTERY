@@ -25,7 +25,7 @@ const CodeEditor = forwardRef(function CodeEditor(
   const containerRef = useRef(null);
   const viewRef = useRef(null);
 
-  // Expose getCode to parent via ref
+  // Expose getCode + setCode to parent via ref
   useImperativeHandle(ref, () => ({
     getCode() {
       if (viewRef.current) {
@@ -33,8 +33,23 @@ const CodeEditor = forwardRef(function CodeEditor(
       }
       return initialCode;
     },
+    setCode(newCode) {
+      if (viewRef.current && newCode !== undefined) {
+        const currentDoc = viewRef.current.state.doc.toString();
+        if (currentDoc !== newCode) {
+          viewRef.current.dispatch({
+            changes: {
+              from: 0,
+              to: currentDoc.length,
+              insert: newCode,
+            },
+          });
+        }
+      }
+    },
   }), [initialCode]);
 
+  // Create editor once
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -97,6 +112,25 @@ const CodeEditor = forwardRef(function CodeEditor(
       viewRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update editor content when initialCode changes (navigation between missions)
+  useEffect(() => {
+    if (viewRef.current && initialCode !== undefined) {
+      const currentDoc = viewRef.current.state.doc.toString();
+      if (currentDoc !== initialCode) {
+        viewRef.current.dispatch({
+          changes: {
+            from: 0,
+            to: currentDoc.length,
+            insert: initialCode,
+          },
+        });
+      }
+    }
+  }, [initialCode]);
+
+  // Note: readOnly is only applied at creation time for simplicity.
+  // Dynamic readOnly changes are handled via the parent component's logic.
 
   return <div className="code-editor" ref={containerRef} id="code-editor" />;
 });
