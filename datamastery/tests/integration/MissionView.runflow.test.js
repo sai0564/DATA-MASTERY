@@ -66,8 +66,10 @@ describe('REGRESSION: Level 1.1 Run flow executes once and advances Maya', () =>
     const acceptBtn = await screen.findByText(/Accept Assignment/i);
     fireEvent.click(acceptBtn);
 
-    // 2. Maya's first task should appear
+    // 2. Maya's first task should appear, with a scaffold note since the
+    //    starter code already satisfies the instruction.
     await screen.findByText(/Load customers\.csv using pandas\./i, {}, { timeout: 20000 });
+    await screen.findByText(/The code has been scaffolded for you/i, {}, { timeout: 20000 });
 
     // 3. Click Run with the unchanged starter code
     const runBtn = await screen.findByText(/▶ Run/i);

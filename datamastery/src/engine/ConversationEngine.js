@@ -124,6 +124,7 @@ export class ConversationEngine {
       validator: step.validator,
       success: step.success || fallbackSuccess,
       explanation: step.explanation || '',
+      scaffoldNote: step.scaffoldNote || null,
       next: step.next,
       missionValidator: getMissionValidation(mission),
     };
@@ -159,6 +160,9 @@ export class ConversationEngine {
           id: definition.id,
           mentor: shouldUseLegacySituation ? asArray(conversation.situation) : definition.mentor(filename),
           task: definition.task(filename),
+          // The scaffold note only makes sense on the very first step, where
+          // the starter code may already satisfy Maya's instruction.
+          scaffoldNote: index === 0 ? (conversation.scaffoldNote || null) : null,
           validator: definition.validator,
           success: isLoadStep ? definition.success : (conversation.resultReaction || definition.success),
           explanation,
@@ -272,6 +276,12 @@ export class ConversationEngine {
     const taskLabel = index === 0 ? 'Your first task:' : 'Your next task:';
     const taskText = step.task || 'Complete this step, then run your code when you are ready.';
     messages.push(`${taskLabel}\n${taskText}`);
+
+    // On the very first step, let the learner know the code is already
+    // scaffolded so they understand why the instruction looks pre-completed.
+    if (index === 0 && step.scaffoldNote) {
+      messages.push(step.scaffoldNote);
+    }
 
     if (messages.length > 0) {
       await this.addMessages(messages, mentor);
