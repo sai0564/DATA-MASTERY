@@ -232,6 +232,24 @@ function MissionView() {
     );
   }
 
+  // --- Pyodide initialization error ---
+  if (pyodide.status === 'error') {
+    return (
+      <div className="mission-view mission-view--error" id="pyodide-error">
+        <div className="mission-view__loader">
+          <div className="mission-view__loader-icon">⚠️</div>
+          <h3>Python Environment Failed to Start</h3>
+          <p className="mission-view__loader-msg">
+            {pyodide.error || 'The Python worker failed to initialize.'}
+          </p>
+          <p className="mission-view__loader-note">
+            Check the browser console for details, then reload the page and try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // --- Pyodide loading ---
   if (pyodide.isLoading || !pyodide.isReady) {
     return (
