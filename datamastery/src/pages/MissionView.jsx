@@ -51,26 +51,38 @@ function MissionView() {
   const nextMsgId = () => `msg-${++messageIdRef.current}`;
   const phaseRunRef = useRef(false);
   const engineRef = useRef(null);
+  const prevSubLevelRef = useRef(null);
+  const codeLoadedRef = useRef(null);
 
   // Reset briefing overlay and states on sub-level path navigation changes
+  // Guarded by prevSubLevelRef to prevent resets on Run clicks (pyodide object changes)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    const missionKey = `${levelId}/${subLevelId}`;
+    if (prevSubLevelRef.current === missionKey) {
+      return;
+    }
+    prevSubLevelRef.current = missionKey;
+
     setBriefingAccepted(false);
     setMessages([]);
     setLastExpressionResult(null);
     setOutput({ stdout: '', stderr: '', error: null, stateDelta: null });
     setEarnedDPState(null);
     setLevelCompleted(false);
+    setDatasetsLoaded(false);
+    phaseRunRef.current = false;
+    codeLoadedRef.current = null;
 
     if (pyodide && pyodide.isReady) {
       pyodide.resetNamespace().catch(() => {});
     }
-    
+
     // Save current mission status to progress store
     if (levelId && subLevelId) {
       saveCurrentMission(levelId, subLevelId);
     }
-  }, [levelId, subLevelId, pyodide]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelId, subLevelId]);
 
   // --- Floating Toast Unlocks ---
   const triggerAchievementToast = useCallback((achievementId) => {
@@ -163,15 +175,19 @@ function MissionView() {
   }, [levelId, subLevelId, missionData, pyodide, addMessages, triggerAchievementToast]);
 
   // Load previously saved code for this mission (improves editor sync)
+  // Uses codeLoadedRef to load only once per mission and SaveSystem + setCode()
   useEffect(() => {
     if (!mission || !levelId || !subLevelId) return;
-    
+    const missionKey = `${levelId}/${subLevelId}`;
+    if (codeLoadedRef.current === missionKey) return;
+
     const savedCode = SaveSystem.getCode(levelId, subLevelId);
     if (savedCode && editorRef.current?.setCode) {
       // Use the new setCode method exposed by CodeEditor ref
       editorRef.current.setCode(savedCode);
       setCode(savedCode);
     }
+    codeLoadedRef.current = missionKey;
   }, [levelId, subLevelId, mission]);
 
   // --- Generate and load datasets ---
