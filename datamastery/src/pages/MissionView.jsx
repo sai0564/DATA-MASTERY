@@ -53,7 +53,6 @@ function MissionView() {
 
   // Reset briefing overlay and states on sub-level path navigation changes
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBriefingAccepted(false);
     setMessages([]);

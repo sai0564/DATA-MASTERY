@@ -4,6 +4,29 @@ import { ProgressionEngine } from './ProgressionEngine.js';
 import { ValidationEngine } from './ValidationEngine.js';
 import { ConversationEngine } from './ConversationEngine.js';
 
+const DATAFRAME_STEP_CONFIG = {
+  loaded: ['checkLoaded'],
+  head: ['checkLoaded', 'checkHead'],
+  preview: ['checkLoaded', 'checkHead'],
+  shape: ['checkLoaded', 'checkShape'],
+  columns: ['checkLoaded', 'checkColumns'],
+  dtypes: ['checkLoaded', 'checkDtypes'],
+  types: ['checkLoaded', 'checkDtypes'],
+  sample: ['checkLoaded', 'checkSample'],
+  describe: ['checkLoaded', 'checkDescribe'],
+  summary: ['checkLoaded', 'checkDescribe'],
+};
+
+const DATAFRAME_CHECK_KEYS = [
+  'checkLoaded',
+  'checkHead',
+  'checkShape',
+  'checkColumns',
+  'checkDtypes',
+  'checkSample',
+  'checkDescribe',
+];
+
 /**
  * MissionEngine — Core orchestrator that manages a mission's state and execution lifecycle.
  * Coordinates between Pyodide, ValidationEngine, RewardEngine, ProgressionEngine, and ConversationEngine.
@@ -29,6 +52,8 @@ export class MissionEngine {
     this.levelsList = levelsList;
     this.onStateUpdate = onStateUpdate;
     this.attempts = 0;
+    this.failedValidationAttempts = 0;
+    this.activeGuidedStepIndex = 0;
 
     const mentor = this.mission?.mentor || this.level?.mentor || 'maya';
 
@@ -49,6 +74,57 @@ export class MissionEngine {
     if (this.onStateUpdate) {
       this.onStateUpdate(newState);
     }
+  }
+
+  getMissionValidation() {
+    return this.mission?.validation || this.mission?.validator || {};
+  }
+
+  getActiveGuidedStep() {
+    const steps = this.conversationEngine.getGuidedSteps(this.mission);
+    return steps[this.activeGuidedStepIndex] || steps[0] || null;
+  }
+
+  resolveStepValidation(step) {
+    const missionValidation = this.getMissionValidation();
+
+    if (!step) return missionValidation;
+
+    if (typeof step.validator === 'string') {
+      const flags = DATAFRAME_STEP_CONFIG[step.validator];
+      if (flags) {
+        const baseConfig = missionValidation.config || {};
+        const stepConfig = { ...baseConfig };
+
+        // A sequential step should validate only the active checkpoint while
+        // preserving supporting config like feedback text and required columns.
+        DATAFRAME_CHECK_KEYS.forEach((key) => {
+          stepConfig[key] = flags.includes(key);
+        });
+
+        return {
+          fn: missionValidation.fn === 'validateDataFrame' ? missionValidation.fn : 'validateDataFrame',
+          config: stepConfig,
+        };
+      }
+
+      return {
+        fn: step.validator,
+        config: missionValidation.config || {},
+      };
+    }
+
+    if (step.validator && typeof step.validator === 'object') {
+      return {
+        fn: step.validator.fn || missionValidation.fn,
+        config: {
+          ...(missionValidation.config || {}),
+          ...(step.validator.config || {}),
+        },
+      };
+    }
+
+    return missionValidation;
   }
 
   /**
@@ -79,6 +155,7 @@ export class MissionEngine {
    */
   async startIntro() {
     if (!this.mission) return;
+    this.activeGuidedStepIndex = 0;
     const progress = SaveSystem.getProgress();
     await this.conversationEngine.startMissionIntro(
       this.mission,
@@ -103,6 +180,9 @@ export class MissionEngine {
     const result = await this.pyodide.runCode(codeToRun);
 
     if (result.error) {
+      if (this.mission.type === 'guided') {
+        this.failedValidationAttempts += 1;
+      }
       this.updateUIState({
         output: { stdout: result.stdout || '', stderr: result.stderr || '', error: result.error },
       });
@@ -113,9 +193,16 @@ export class MissionEngine {
       output: { stdout: result.stdout, stderr: result.stderr, error: null },
     });
 
-    // Run semantic validation
-    const validationResult = ValidationEngine.validate(
-      this.mission.validation.fn,
+    const activeStep = this.mission.type === 'guided' ? this.getActiveGuidedStep() : null;
+    const validation = this.mission.type === 'guided'
+      ? this.resolveStepValidation(activeStep)
+      : this.getMissionValidation();
+
+    // Run semantic validation. The validation engine remains the single source
+    // of truth; guided steps only change which existing validator/config is
+    // active at this moment in the mentor conversation.
+    const validationResult = await ValidationEngine.validate(
+      validation.fn,
       {
         stdout: result.stdout,
         stderr: result.stderr,
@@ -123,22 +210,38 @@ export class MissionEngine {
       },
       {
         type: this.mission.type,
-        config: this.mission.validation?.config,
+        config: validation?.config,
+        pyodide: this.pyodide,
+        code: codeToRun,
       }
     );
 
     // Run dialogue reaction
-    const passed = await this.conversationEngine.handleValidation(
+    const flowResult = await this.conversationEngine.handleValidation(
       this.mission,
       validationResult,
-      interpolate
+      interpolate,
+      this.activeGuidedStepIndex
     );
 
-    if (passed) {
+    if (this.mission.type === 'guided' && !flowResult.stepPassed) {
+      this.failedValidationAttempts += 1;
+    }
+
+    if (this.mission.type === 'guided' && flowResult.stepPassed && !flowResult.missionComplete) {
+      this.activeGuidedStepIndex += 1;
+      return;
+    }
+
+    if (flowResult.missionComplete) {
+      const rewardAttempts = this.mission.type === 'guided'
+        ? this.failedValidationAttempts + 1
+        : this.attempts;
+
       // 1. Calculate Rewards using RewardEngine
-      const rewards = RewardEngine.calculateRewards(this.mission.points, {
+      const rewards = RewardEngine.calculateRewards(this.mission.rewards || this.mission.points, {
         hintsUsed,
-        attempts: this.attempts,
+        attempts: rewardAttempts,
         isChallenge: this.mission.type === 'challenge',
       });
 
@@ -153,7 +256,7 @@ export class MissionEngine {
         hintsUsed,
         codeToRun,
         this.levelsList,
-        this.attempts
+        rewardAttempts
       );
 
       // 3. Save progress via SaveSystem
