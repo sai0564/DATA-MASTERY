@@ -1,90 +1,107 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 /**
- * Hook to manage the Pyodide Web Worker lifecycle and communication.
- *
- * States: 'idle' | 'loading-pyodide' | 'loading-packages' | 'ready' | 'running' | 'error'
+ * Singleton service to manage a single Pyodide Web Worker instance across the application lifecycle.
  */
-export function usePyodide() {
-  const workerRef = useRef(null);
-  const [status, setStatus] = useState('idle');
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [error, setError] = useState(null);
+class PyodideService {
+  constructor() {
+    this.worker = null;
+    this.status = 'idle';
+    this.loadingMessage = '';
+    this.error = null;
+    
+    this.listeners = new Set();
+    this.pending = null;
+    this.initCallbacks = [];
+    this.firstLoadingLogged = false;
 
-  // Promise resolver for the current worker operation
-  const pendingRef = useRef(null);
-  const firstLoadingLoggedRef = useRef(false);
+    this.handleMessage = this.handleMessage.bind(this);
+    this.handleWorkerFailure = this.handleWorkerFailure.bind(this);
+  }
 
-  const failWorkerOperation = useCallback((message) => {
-    const pending = pendingRef.current;
-    pendingRef.current = null;
-    setStatus('error');
-    setError(message);
-    if (pending) {
-      pending.reject(new Error(message));
-    }
-  }, []);
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
 
-  const handleMessage = useCallback((event) => {
+  emit() {
+    this.listeners.forEach((listener) => listener());
+  }
+
+  updateState(updates) {
+    if (updates.status !== undefined) this.status = updates.status;
+    if (updates.loadingMessage !== undefined) this.loadingMessage = updates.loadingMessage;
+    if (updates.error !== undefined) this.error = updates.error;
+    this.emit();
+  }
+
+  handleMessage(event) {
     const msg = event.data;
 
     switch (msg.type) {
       case 'loading':
-        if (!firstLoadingLoggedRef.current) {
+        if (!this.firstLoadingLogged) {
           console.info('[Pyodide] First loading message received', msg);
-          firstLoadingLoggedRef.current = true;
+          this.firstLoadingLogged = true;
         }
-        setStatus(msg.stage === 'pyodide' ? 'loading-pyodide' : 'loading-packages');
-        setLoadingMessage(msg.message || '');
+        this.updateState({
+          status: msg.stage === 'pyodide' ? 'loading-pyodide' : 'loading-packages',
+          loadingMessage: msg.message || ''
+        });
         break;
 
       case 'ready':
         console.info('[Pyodide] Ready');
-        setStatus('ready');
-        setLoadingMessage('');
-        setError(null);
-        if (pendingRef.current?.type === 'init') {
-          pendingRef.current.resolve();
-          pendingRef.current = null;
+        this.updateState({
+          status: 'ready',
+          loadingMessage: '',
+          error: null
+        });
+        if (this.pending?.type === 'init') {
+          this.initCallbacks.forEach(cb => cb.resolve());
+          this.initCallbacks = [];
+          this.pending = null;
         }
         break;
 
       case 'datasets-loaded':
-        if (pendingRef.current?.type === 'load-datasets') {
-          pendingRef.current.resolve(msg.files);
-          pendingRef.current = null;
+        if (this.pending?.type === 'load-datasets') {
+          this.pending.resolve(msg.files);
+          this.pending = null;
         }
         break;
 
       case 'result':
-        setStatus('ready');
-        if (pendingRef.current?.type === 'run') {
-          pendingRef.current.resolve({
+        this.updateState({ status: 'ready' });
+        if (this.pending?.type === 'run') {
+          this.pending.resolve({
             stdout: msg.stdout,
             stderr: msg.stderr,
             variables: msg.variables,
             lastExpressionResult: msg.lastExpressionResult,
             stateDelta: msg.stateDelta,
           });
-          pendingRef.current = null;
+          this.pending = null;
         }
         break;
 
       case 'error': {
         const message = msg.message || 'Unknown Pyodide worker error';
         console.error('[Pyodide] Worker error message received', message);
-        const pending = pendingRef.current;
+        const pending = this.pending;
 
         if (pending?.type === 'init') {
-          if (workerRef.current) {
-            workerRef.current.terminate();
-            workerRef.current = null;
+          if (this.worker) {
+            this.worker.terminate();
+            this.worker = null;
           }
-          failWorkerOperation(message);
+          this.failWorkerOperation(message);
         } else if (pending?.type === 'load-datasets') {
-          failWorkerOperation(message);
+          this.failWorkerOperation(message);
         } else if (pending?.type === 'run') {
-          setStatus('ready');
+          this.updateState({ status: 'ready' });
           pending.resolve({
             stdout: '',
             stderr: '',
@@ -92,116 +109,179 @@ export function usePyodide() {
             traceback: msg.traceback,
             variables: {},
           });
-          pendingRef.current = null;
+          this.pending = null;
         } else {
-          setStatus('error');
-          setError(message);
+          this.updateState({ status: 'error', error: message });
         }
         break;
       }
 
       case 'reset-done':
-        if (pendingRef.current?.type === 'reset') {
-          pendingRef.current.resolve();
-          pendingRef.current = null;
+        if (this.pending?.type === 'reset') {
+          this.pending.resolve();
+          this.pending = null;
         }
         break;
     }
-  }, [failWorkerOperation]);
+  }
 
-  const handleWorkerFailure = useCallback((event, kind) => {
+  handleWorkerFailure(event, kind) {
     const detail = event?.message || event?.type || 'Unknown worker failure';
     const message = `Pyodide worker ${kind}: ${detail}`;
     console.error(`[Pyodide] ${message}`, event);
-    if (workerRef.current) {
-      workerRef.current.terminate();
-      workerRef.current = null;
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
     }
-    failWorkerOperation(message);
-  }, [failWorkerOperation]);
+    this.failWorkerOperation(message);
+  }
 
-  // Initialize Pyodide
-  const init = useCallback(() => {
-    if (workerRef.current) return Promise.resolve();
+  failWorkerOperation(message) {
+    const pending = this.pending;
+    this.pending = null;
+    const err = new Error(message);
+    
+    this.updateState({
+      status: 'error',
+      error: message
+    });
+    
+    if (pending) {
+      if (pending.type === 'init') {
+        this.initCallbacks.forEach(cb => cb.reject(err));
+        this.initCallbacks = [];
+      } else {
+        pending.reject(err);
+      }
+    }
+  }
+
+  init() {
+    if (this.worker) {
+      if (this.status === 'ready') {
+        return Promise.resolve();
+      }
+      if (this.pending?.type === 'init') {
+        return new Promise((resolve, reject) => {
+          this.initCallbacks.push({ resolve, reject });
+        });
+      }
+      return Promise.resolve();
+    }
+    
+    this.initCallbacks = [];
 
     return new Promise((resolve, reject) => {
+      this.initCallbacks.push({ resolve, reject });
       let worker;
       try {
         worker = new Worker('/pyodideWorker.js');
-        console.info('[Pyodide] Worker created');
-        worker.addEventListener('message', handleMessage);
-        worker.addEventListener('error', (event) => handleWorkerFailure(event, 'error'));
-        worker.addEventListener('messageerror', (event) => handleWorkerFailure(event, 'messageerror'));
-        workerRef.current = worker;
-        pendingRef.current = { type: 'init', resolve, reject };
-        firstLoadingLoggedRef.current = false;
+        console.info('[Pyodide] Singleton Worker created');
+        worker.addEventListener('message', this.handleMessage);
+        worker.addEventListener('error', (event) => this.handleWorkerFailure(event, 'error'));
+        worker.addEventListener('messageerror', (event) => this.handleWorkerFailure(event, 'messageerror'));
+        this.worker = worker;
+        this.pending = { type: 'init' };
+        this.firstLoadingLogged = false;
         worker.postMessage({ type: 'init' });
         console.info('[Pyodide] Init message sent');
       } catch (err) {
         console.error('[Pyodide] Failed to create or start worker', err);
         if (worker) worker.terminate();
-        workerRef.current = null;
-        setStatus('error');
-        setError(err.message);
-        reject(err);
+        this.worker = null;
+        this.updateState({ status: 'error', error: err.message });
+        this.initCallbacks.forEach(cb => cb.reject(err));
+        this.initCallbacks = [];
       }
     });
-  }, [handleMessage, handleWorkerFailure]);
+  }
 
-  // Load CSV datasets into Pyodide's virtual filesystem
-  const loadDatasets = useCallback((files) => {
-    if (!workerRef.current) return Promise.reject(new Error('Worker not initialized'));
-
-    return new Promise((resolve, reject) => {
-      pendingRef.current = { type: 'load-datasets', resolve, reject };
-      workerRef.current.postMessage({ type: 'load-datasets', files });
-    });
-  }, []);
-
-  // Run Python code
-  const runCode = useCallback((code) => {
-    if (!workerRef.current) return Promise.reject(new Error('Worker not initialized'));
-
-    setStatus('running');
-    return new Promise((resolve, reject) => {
-      pendingRef.current = { type: 'run', resolve, reject };
-      workerRef.current.postMessage({ type: 'run', code });
-    });
-  }, []);
-
-  // Reset the Python namespace
-  const resetNamespace = useCallback(() => {
-    if (!workerRef.current) return Promise.resolve();
+  loadDatasets(files) {
+    if (!this.worker) return Promise.reject(new Error('Worker not initialized'));
 
     return new Promise((resolve, reject) => {
-      pendingRef.current = { type: 'reset', resolve, reject };
-      workerRef.current.postMessage({ type: 'reset' });
+      this.pending = { type: 'load-datasets', resolve, reject };
+      this.worker.postMessage({ type: 'load-datasets', files });
     });
-  }, []);
+  }
 
-  // Cleanup on unmount. Reject any in-flight operation so it cannot wait forever.
+  runCode(code) {
+    if (!this.worker) return Promise.reject(new Error('Worker not initialized'));
+
+    this.updateState({ status: 'running' });
+    return new Promise((resolve, reject) => {
+      this.pending = { type: 'run', resolve, reject };
+      this.worker.postMessage({ type: 'run', code });
+    });
+  }
+
+  resetNamespace() {
+    if (!this.worker) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      this.pending = { type: 'reset', resolve, reject };
+      this.worker.postMessage({ type: 'reset' });
+    });
+  }
+  
+  terminate() {
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+    const pending = this.pending;
+    this.pending = null;
+    if (pending) {
+      if (pending.type === 'init') {
+        this.initCallbacks.forEach(cb => cb.reject(new Error('Pyodide worker terminated manually')));
+        this.initCallbacks = [];
+      } else {
+        pending.reject(new Error('Pyodide worker terminated manually'));
+      }
+    }
+    this.updateState({
+      status: 'idle',
+      loadingMessage: '',
+      error: null
+    });
+  }
+}
+
+const pyodideService = new PyodideService();
+
+/**
+ * Hook to interface with the singleton Pyodide Service state.
+ */
+export function usePyodide() {
+  const [state, setState] = useState({
+    status: pyodideService.status,
+    loadingMessage: pyodideService.loadingMessage,
+    error: pyodideService.error,
+  });
+
   useEffect(() => {
-    return () => {
-      if (workerRef.current) {
-        console.info('[Pyodide] Worker terminated');
-        const pending = pendingRef.current;
-        pendingRef.current = null;
-        if (pending) {
-          pending.reject(new Error('Pyodide worker terminated during operation'));
-        }
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-    };
+    const unsubscribe = pyodideService.subscribe(() => {
+      setState({
+        status: pyodideService.status,
+        loadingMessage: pyodideService.loadingMessage,
+        error: pyodideService.error,
+      });
+    });
+    return unsubscribe;
   }, []);
+
+  const init = useCallback(() => pyodideService.init(), []);
+  const loadDatasets = useCallback((files) => pyodideService.loadDatasets(files), []);
+  const runCode = useCallback((code) => pyodideService.runCode(code), []);
+  const resetNamespace = useCallback(() => pyodideService.resetNamespace(), []);
 
   return {
-    status,
-    loadingMessage,
-    error,
-    isReady: status === 'ready',
-    isRunning: status === 'running',
-    isLoading: status === 'loading-pyodide' || status === 'loading-packages',
+    status: state.status,
+    loadingMessage: state.loadingMessage,
+    error: state.error,
+    isReady: state.status === 'ready',
+    isRunning: state.status === 'running',
+    isLoading: state.status === 'loading-pyodide' || state.status === 'loading-packages',
     init,
     loadDatasets,
     runCode,

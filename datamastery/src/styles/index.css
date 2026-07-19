@@ -1,70 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
 /* ==========================================================================
    DataMastery — Global Design System
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 /* ---------- Design Tokens ---------- */
 :root {
   /* Background layers */
-  --bg-deep: #060a13;
-  --bg-base: #0a0e17;
-  --bg-surface: #111827;
-  --bg-elevated: #1a2233;
-  --bg-hover: #1f2b3d;
+  --bg-deep: #09090b;
+  --bg-base: #0e0e11;
+  --bg-surface: #18181b;
+  --bg-elevated: #27272a;
+  --bg-hover: #3f3f46;
+
+  /* Standard color hooks for vendor components */
+  --color-background: #18181b;
+  --color-border: rgba(255, 255, 255, 0.04);
 
   /* Borders */
-  --border-subtle: #1e293b;
-  --border-default: #2a3444;
-  --border-strong: #3b4a5c;
+  --border-subtle: rgba(255, 255, 255, 0.02);
+  --border-default: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.08);
 
   /* Text */
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-inverse: #0a0e17;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-inverse: #09090b;
 
-  /* Accent — Indigo/Purple gradient system */
-  --accent-primary: #6366f1;
-  --accent-secondary: #8b5cf6;
-  --accent-glow: #818cf8;
-  --accent-muted: rgba(99, 102, 241, 0.15);
-  --accent-gradient: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+  /* Accent — Professional Royal Blue & Indigo */
+  --accent-primary: #3b82f6;
+  --accent-secondary: #6366f1;
+  --accent-glow: #3b82f6;
+  --accent-muted: rgba(59, 130, 246, 0.08);
+  --accent-gradient: linear-gradient(135deg, #3b82f6, #6366f1);
 
   /* Semantic colors */
   --success: #10b981;
-  --success-muted: rgba(16, 185, 129, 0.15);
+  --success-muted: rgba(16, 185, 129, 0.1);
   --warning: #f59e0b;
-  --warning-muted: rgba(245, 158, 11, 0.15);
+  --warning-muted: rgba(245, 158, 11, 0.1);
   --error: #ef4444;
-  --error-muted: rgba(239, 68, 68, 0.15);
+  --error-muted: rgba(239, 68, 68, 0.1);
   --info: #3b82f6;
-  --info-muted: rgba(59, 130, 246, 0.15);
+  --info-muted: rgba(59, 130, 246, 0.1);
 
   /* Points / Rewards */
   --gold: #fbbf24;
-  --gold-glow: rgba(251, 191, 36, 0.3);
+  --gold-glow: rgba(251, 191, 36, 0.2);
 
   /* Maya's chat */
-  --maya-bubble: #1a2744;
-  --maya-border: #2a3d66;
+  --maya-bubble: #18181b;
+  --maya-border: rgba(255, 255, 255, 0.04);
 
   /* Learner's chat */
-  --learner-bubble: #1e1b4b;
-  --learner-border: #3730a3;
+  --learner-bubble: #09090b;
+  --learner-border: rgba(59, 130, 246, 0.12);
 
   /* Code editor */
-  --editor-bg: #0d1117;
-  --editor-gutter: #161b22;
-  --editor-line-highlight: rgba(99, 102, 241, 0.06);
-  --editor-selection: rgba(99, 102, 241, 0.2);
+  --editor-bg: #09090b;
+  --editor-gutter: #09090b;
+  --editor-line-highlight: rgba(59, 130, 246, 0.03);
+  --editor-selection: rgba(59, 130, 246, 0.12);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
-  --shadow-glow-lg: 0 0 40px rgba(99, 102, 241, 0.25), 0 0 80px rgba(139, 92, 246, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.06);
+  --shadow-glow-lg: 0 0 40px rgba(59, 130, 246, 0.04), 0 0 80px rgba(99, 102, 241, 0.02);
 
   /* Typography */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -115,6 +120,59 @@
   --topbar-height: 56px;
   --sidebar-width: 280px;
   --content-max-width: 1200px;
+}
+
+/* ---------- Light Theme Override ---------- */
+.light,
+.light-theme {
+  --bg-deep: #f4f4f5; /* Zinc 100 */
+  --bg-base: #fafafa; /* Zinc 50 */
+  --bg-surface: #ffffff;
+  --bg-elevated: #e4e4e7; /* Zinc 200 */
+  --bg-hover: #d4d4d8; /* Zinc 300 */
+
+  /* Standard color hooks for vendor components */
+  --color-background: #ffffff;
+  --color-border: rgba(9, 9, 11, 0.06);
+
+  /* Borders */
+  --border-subtle: rgba(9, 9, 11, 0.03);
+  --border-default: rgba(9, 9, 11, 0.06);
+  --border-strong: rgba(9, 9, 11, 0.12);
+
+  /* Text */
+  --text-primary: #09090b; /* Zinc 950 */
+  --text-secondary: #27272a; /* Zinc 800 */
+  --text-muted: #71717a; /* Zinc 500 */
+  --text-inverse: #fafafa;
+
+  /* Accent — Professional Royal Blue & Indigo */
+  --accent-primary: #2563eb;
+  --accent-secondary: #4f46e5;
+  --accent-glow: #2563eb;
+  --accent-muted: rgba(37, 99, 235, 0.08);
+  --accent-gradient: linear-gradient(135deg, #2563eb, #4f46e5);
+
+  /* Semantic colors */
+  --success: #059669;
+  --success-muted: rgba(5, 150, 105, 0.08);
+  --warning: #d97706;
+  --warning-muted: rgba(217, 119, 6, 0.08);
+  --error: #dc2626;
+  --error-muted: rgba(220, 38, 38, 0.08);
+  --info: #2563eb;
+  --info-muted: rgba(37, 99, 235, 0.08);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.12);
+  --shadow-glow-lg: 0 0 40px rgba(37, 99, 235, 0.08), 0 0 80px rgba(79, 70, 229, 0.04);
+
+  /* Code editor/Terminal theme adjustment */
+  --editor-bg: #fafafa;
+  --editor-gutter: #fafafa;
 }
 
 
@@ -217,6 +275,20 @@ code {
   color: var(--text-primary);
 }
 
+/* ---------- Standard Color Utility Overrides for Vendor Compatibility ---------- */
+.bg-card {
+  background-color: var(--bg-surface) !important;
+}
+.bg-muted {
+  background-color: var(--bg-base) !important;
+}
+.text-foreground {
+  color: var(--text-primary) !important;
+}
+.text-muted-foreground {
+  color: var(--text-muted) !important;
+}
+
 /* ---------- Focus ---------- */
 :focus-visible {
   outline: 2px solid var(--accent-primary);
@@ -260,4 +332,58 @@ code {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ---------- Marquee Animations ---------- */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
+}
+
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--duration) linear infinite;
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical var(--duration) linear infinite;
+}
+
+/* ---------- Framework Line Drawing ---------- */
+.frameworkline {
+  offset-anchor: 10px 0px;
+  animation: frameworkline-animation-path;
+  animation-iteration-count: infinite;
+  animation-timing-function: cubic-bezier(0.9, 0.8, 0.8, 0.9);
+  animation-duration: 3.5s;
+}
+
+.framework-line {
+  offset-path: path(
+    "M 1 0 v 5 q 0 5 5 5 h 39 q 5 0 5 5 v 71 q 0 5 5 5 h 39 q 5 0 5 5 v 20"
+  );
+}
+
+@keyframes frameworkline-animation-path {
+  0% {
+    offset-distance: 0%;
+  }
+  85% {
+    offset-distance: 100%;
+  }
+  100% {
+    offset-distance: 100%;
+  }
 }

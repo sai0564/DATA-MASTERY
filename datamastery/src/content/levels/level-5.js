@@ -204,19 +204,19 @@ export const level5 = {
           injections: []
         },
       },
-      starterCode: `import pandas as pd\n\ndf = pd.read_csv('warehouse_capacity.csv')\n\n# Melt the dataframe\nlong_df = pd.melt(df, id_vars=['warehouse_id'], var_name='Month', value_name='Capacity')`,
+      starterCode: `import pandas as pd\n\ndf = pd.read_csv('warehouse_capacity.csv')\n\n# Melt the dataframe\nlong_df = `,
       expectedConcepts: ['melt', 'id_vars', 'var_name', 'value_name'],
       conversation: {
         situation: [
-          "`pd.melt()` requires you to specify `id_vars` (the columns to keep untouched).",
-          "You also specify `var_name` (the new column for the old column headers) and `value_name` (the new column for the values)."
+          "Call `pd.melt()` to reshape the dataframe.",
+          "You must specify `id_vars` (the column(s) to keep untouched), `var_name` (the new column for months), and `value_name` (the new column for capacities)."
         ],
         success: [
           "Look at that. You just turned a 13-column mess into a clean, 3-column, machine-readable dataset.",
           "Melting is tricky to wrap your head around, but incredibly useful."
         ],
         hints: [
-          "Just run the starter code! I gave you the answer this time because the syntax is notoriously tricky to memorize."
+          "Try: `long_df = pd.melt(df, id_vars=['warehouse_id'], var_name='Month', value_name='Capacity')`"
         ]
       },
       validator: { fn: 'validateDataFrame' }

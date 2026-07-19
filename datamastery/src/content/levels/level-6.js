@@ -92,11 +92,11 @@ export const level6 = {
         'orders.csv': { generator: 'sales', count: 1000, injections: [] },
         'customers.csv': { generator: 'customers', count: 800, injections: [] }
       },
-      starterCode: `import pandas as pd\n\norders = pd.read_csv('orders.csv')\ncustomers = pd.read_csv('customers.csv')\n\n# Perform an inner join on 'customer_id'\nmerged = pd.merge(orders, customers, on='customer_id', how='inner')`,
+      starterCode: `import pandas as pd\n\norders = pd.read_csv('orders.csv')\ncustomers = pd.read_csv('customers.csv')\n\n# Perform an inner join on 'customer_id'\nmerged = `,
       expectedConcepts: ['merge', 'on', 'inner'],
       conversation: {
         situation: [
-          "I've filled out the syntax for you because it's crucial you understand it.",
+          "Let's merge the two dataframes on customer_id.",
           "We specify the left table (`orders`), the right table (`customers`), the key to match on (`on='customer_id'`), and the type of join (`how='inner'`)."
         ],
         success: [
@@ -104,7 +104,7 @@ export const level6 = {
           "An 'inner' join drops any rows that don't have a match in BOTH tables."
         ],
         hints: [
-          "Just hit Run!"
+          "Try: `merged = pd.merge(orders, customers, on='customer_id', how='inner')`"
         ]
       },
       validator: { fn: 'validateDataFrame' }
@@ -194,11 +194,11 @@ export const level6 = {
         'products.csv': { generator: 'products', count: 100, injections: [] },
         'orders.csv': { generator: 'sales', count: 500, injections: [] }
       },
-      starterCode: `import pandas as pd\n\nproducts = pd.read_csv('products.csv')\norders = pd.read_csv('orders.csv')\n\n# Merge with custom suffixes\nmerged = pd.merge(orders, products, on='product_id', how='inner', suffixes=('_order', '_prod'))`,
+      starterCode: `import pandas as pd\n\nproducts = pd.read_csv('products.csv')\norders = pd.read_csv('orders.csv')\n\n# Merge with custom suffixes\nmerged = `,
       expectedConcepts: ['suffixes'],
       conversation: {
         situation: [
-          "I've provided the syntax. Just examine it and hit Run."
+          "Call pd.merge and supply the custom `suffixes=('_order', '_prod')` parameter."
         ],
         success: [
           "Great. Now the columns are explicitly named `updated_at_order` and `updated_at_prod`.",

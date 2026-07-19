@@ -22,22 +22,26 @@ const PageLoader = () => (
   </div>
 );
 
+import { ThemeProvider } from 'next-themes';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AppErrorBoundary>
-      <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route element={<App />}>
-              <Route path="/" element={<Landing />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/level/:levelId" element={<LevelDetail />} />
-              <Route path="/level/:levelId/:subLevelId" element={<MissionView />} />
-              <Route path="/playground" element={<Playground />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </AppErrorBoundary>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <AppErrorBoundary>
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route element={<App />}>
+                <Route path="/" element={<Landing />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/level/:levelId" element={<LevelDetail />} />
+                <Route path="/level/:levelId/:subLevelId" element={<MissionView />} />
+                <Route path="/playground" element={<Playground />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </AppErrorBoundary>
+    </ThemeProvider>
   </StrictMode>
 );

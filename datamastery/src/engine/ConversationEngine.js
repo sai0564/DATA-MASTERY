@@ -379,4 +379,90 @@ export class ConversationEngine {
     if (idx <= 0) return null;
     return level.subLevels[idx - 1].id;
   }
+
+  getFriendlyErrorExplanation(error, userCode, mission) {
+    const errorStr = String(error);
+    let title = "⚠️ Analysis Exception";
+    let explanation = "Python encountered an error trying to run your code.";
+    let why = "This usually means something was typed incorrectly or reference names do not match.";
+    let fix = "Review the line highlighted in the output exception details below.";
+    
+    if (errorStr.includes('FileNotFoundError')) {
+      title = "📁 Dataset Missing (FileNotFoundError)";
+      explanation = "Pandas could not find the file you requested.";
+      why = "You specified a filename that does not exist in Pyodide's virtual filesystem.";
+      fix = `Check that your filename matches exactly (e.g., '${mission?.datasetCard?.filename || 'customers.csv'}'). Use pd.read_csv('filename') with matching quotes.`;
+    } else if (errorStr.includes('NameError')) {
+      const match = errorStr.match(/name '(\w+)' is not defined/);
+      const varName = match ? match[1] : 'variable';
+      title = `🔍 Name Error (${varName} is Undefined)`;
+      explanation = `The name '${varName}' is referenced but has not been defined.`;
+      why = varName === 'pd' 
+        ? "You forgot to import Pandas! Always include 'import pandas as pd' at the start of your notebook."
+        : `You are calling '${varName}' before assigning it a value, or there's a spelling typo.`;
+      fix = varName === 'pd'
+        ? "Add 'import pandas as pd' at the very top of your cell."
+        : `Verify that you defined '${varName}' (e.g., '${varName} = df...') and check for letter casing.`;
+    } else if (errorStr.includes('AttributeError')) {
+      const match = errorStr.match(/object has no attribute '(\w+)'/);
+      const attrName = match ? match[1] : 'attribute';
+      title = `⚙️ Attribute Error (Missing '${attrName}')`;
+      explanation = `The object has no method or property named '${attrName}'.`;
+      why = "You tried to call a function or check an attribute that does not exist on this object class.";
+      fix = `Double check your spelling! For example, did you call '.shapes' instead of '.shape'? Note that properties like '.shape' do not require parentheses: use 'df.shape' instead of 'df.shape()'.`;
+    } else if (errorStr.includes('TypeError')) {
+      title = "⚡ Type Error (Incorrect Operation)";
+      explanation = "The operation is invalid for this data type.";
+      why = "You passed arguments of the wrong format, or tried to treat an attribute/property as a callable function.";
+      fix = "Ensure you are using correct parentheses. For instance, do not add () to non-function properties.";
+    } else if (errorStr.includes('SyntaxError')) {
+      title = "✍️ Syntax Error (Invalid Code)";
+      explanation = "Python could not parse the structure of your code.";
+      why = "There is a grammatical typo, like an unclosed parenthesis, unbalanced quote, or mismatched bracket.";
+      fix = "Look for missing commas between parameters, unclosed parenthesis `(`, or hanging quotation marks.";
+    }
+
+    return `### ${title}\n\n**What happened:** ${explanation}\n\n**Why it happened:** ${why}\n\n**💡 Hint to fix:** ${fix}`;
+  }
+
+  answerQuestion(questionText, userCode, activeError, mission, levelId) {
+    const q = questionText.toLowerCase();
+
+    // 1. If user is asking about an active error
+    if (activeError && (q.includes('error') || q.includes('fail') || q.includes('wrong') || q.includes('problem') || q.includes('why'))) {
+      return this.getFriendlyErrorExplanation(activeError, userCode, mission);
+    }
+
+    // 2. Specific conceptual questions
+    if (q.includes('groupby') && (q.includes('nan') || q.includes('null') || q.includes('empty'))) {
+      return "### 📊 Why is groupby returning NaN?\n\nWhen you call `.groupby()` followed by a mathematical aggregation like `.mean()` or `.sum()`, Pandas will calculate values for **numeric columns only**.\n\nIf your columns contain strings, dates, or non-numeric types, they might result in empty cells or `NaN` outputs. \n\n**💡 How to fix:**\n1. Ensure the columns you are aggregating contain numeric types.\n2. Filter for numeric columns first: `df.select_dtypes(include='number')`.\n3. Make sure you aren't grouping by the same column you are summing!";
+    }
+
+    if (q.includes('groupby')) {
+      return "### 🔄 Explaining GroupBy\n\n`.groupby()` splits a DataFrame into groups based on some key, applies an aggregation function (like `mean()`, `sum()`, or `count()`), and combines the results.\n\n**Example:**\n```python\n# Calculate average spent per customer segment\ndf.groupby('segment')['spent'].mean()\n```\nHere, `'segment'` is the grouping key, `'spent'` is the column we want to analyze, and `.mean()` is the aggregation.";
+    }
+
+    if (q.includes('axis=1') || q.includes('axis = 1') || q.includes('axis')) {
+      return "### 📐 Understanding Axes (axis=0 vs axis=1)\n\nIn Pandas, operations take place along an **axis**:\n- **`axis=0` (Rows)**: Operates *downward* vertically. For example, `df.mean(axis=0)` calculates the mean of each column across all rows.\n- **`axis=1` (Columns)**: Operates *sideways* horizontally. For example, `df.sum(axis=1)` calculates the sum of all columns for each specific row.\n\n**Memory Tip:** Think of `axis=1` as columns, running side-to-side.";
+    }
+
+    if (q.includes('merge') || q.includes('join')) {
+      return "### 🔗 Merge vs Join in Pandas\n\n- **`pd.merge()`** is the most powerful and common way to combine DataFrames. It allows you to align rows on **any column** using the `on` parameter (e.g. `on='customer_id'`).\n- **`df.join()`** is a convenience method that merges DataFrames based on their **index** rather than arbitrary columns.\n\n**Example of Merge:**\n```python\nmerged_df = pd.merge(orders, customers, on='customer_id', how='inner')\n```";
+    }
+
+    if (q.includes('inplace')) {
+      return "### 💾 What does inplace=True do?\n\nWhen you modify a DataFrame (like dropping columns or filling NAs), Pandas returns a **new copy** of the modified DataFrame by default.\n\nIf you specify `inplace=True`, Pandas modifies the **original** DataFrame directly and returns `None`.\n\n**Example:**\n```python\n# These two operations achieve the same result:\ndf.dropna(inplace=True)\n# is equivalent to:\ndf = df.dropna()\n```\n*Note: Modern Pandas best practices discourage using `inplace=True` because it can prevent method chaining.*";
+    }
+
+    // 3. Current mission hints / help
+    if (q.includes('hint') || q.includes('help') || q.includes('solve') || q.includes('code') || q.includes('stuck') || q.includes('what to do')) {
+      if (mission?.conversation?.hints && mission.conversation.hints.length > 0) {
+        return `### 💡 Mission Clue\n\nHere is a hint to guide you through this step:\n\n${mission.conversation.hints[0]}`;
+      }
+      return `### 🎯 Lesson Objective\n\nFor this assignment, we are trying to:\n**${mission?.learningObjective || 'Complete the pandas operation'}**\n\nTry reading the objective panel on the left, check the attached database schema, and run code after editing.`;
+    }
+
+    // 4. Default helpful fallback response
+    return `### 👋 Hello! I'm Maya, your AI mentor.\n\nI can help you analyze datasets, explain errors, and guide you through Pandas or NumPy operations.\n\n**Try asking me things like:**\n- *"Explain axis=1"* \n- *"Why am I getting a NameError?"*\n- *"What is the difference between merge and join?"*\n- *"What is pd.melt doing?"*\n\n**Current Objective:** ${mission?.learningObjective || 'Experiment in the workspace.'}`;
+  }
 }

@@ -1,22 +1,19 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { usePyodideContext } from '../context/PyodideContext.jsx';
 import { getSubLevel, getNextSubLevel, levels } from '../content/levelRegistry.js';
 import { DatasetEngine } from '../engine/DatasetEngine.js';
 import { MissionEngine } from '../engine/MissionEngine.js';
-import { RewardEngine } from '../engine/RewardEngine.js';
-import { saveCurrentMission } from '../stores/progressStore.js';
+import { ConversationEngine } from '../engine/ConversationEngine.js';
 import { SaveSystem } from '../engine/SaveSystem.js';
-import { MENTORS, GUIDED_PHASE, CHALLENGE_PHASE, ACHIEVEMENT_REGISTRY } from '../utils/constants.js';
-import ChatPanel from '../components/chat/ChatPanel.jsx';
+import { MENTORS } from '../utils/constants.js';
 import CodeEditor from '../components/editor/CodeEditor.jsx';
 import OutputPanel from '../components/editor/OutputPanel.jsx';
-import HintDrawer from '../components/hints/HintDrawer.jsx';
+import {
+  Award, Clock, Sparkles, CheckCircle2, Lock, Play, FileText, X,
+  ChevronLeft, Loader2, Zap, FolderOpen, AlertTriangle, BookOpen, HelpCircle, AlertCircle
+} from 'lucide-react';
 import './MissionView.css';
-
-// Typing animation defaults
-const TYPING_DELAY = 600;
-const MESSAGE_DELAY = 900;
 
 function MissionView() {
   const { levelId, subLevelId } = useParams();
@@ -24,110 +21,83 @@ function MissionView() {
   const pyodide = usePyodideContext();
   const editorRef = useRef(null);
 
-  // Look up mission data
-  const missionData = getSubLevel(levelId, subLevelId);
-  const level = missionData?.level;
-  const mission = missionData?.subLevel;
-  const isChallenge = mission?.type === 'challenge';
-
-  // --- States ---
-  const [messages, setMessages] = useState([]);
+  // --- Core states ---
   const [phase, setPhase] = useState('loading');
   const [output, setOutput] = useState({ stdout: '', stderr: '', error: null });
   const [lastExpressionResult, setLastExpressionResult] = useState(null);
   const [datasetsLoaded, setDatasetsLoaded] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [code, setCode] = useState('');
-  const [, setChallengeStatesReached] = useState(new Set());
   const [earnedDPState, setEarnedDPState] = useState(null);
   const [levelCompleted, setLevelCompleted] = useState(false);
+  const [activeGuidedStepIndex, setActiveGuidedStepIndex] = useState(0);
   
   // Experience Engine States
   const [briefingAccepted, setBriefingAccepted] = useState(false);
   const [inspectDataset, setInspectDataset] = useState(null);
   const [activeToasts, setActiveToasts] = useState([]);
+  
+  // Interactive Maya Card States
+  const [hintClickCount, setHintClickCount] = useState(0);
 
-  const messageIdRef = useRef(0);
-  const nextMsgId = () => `msg-${++messageIdRef.current}`;
-  const phaseRunRef = useRef(false);
   const engineRef = useRef(null);
   const prevSubLevelRef = useRef(null);
   const codeLoadedRef = useRef(null);
 
-  // Reset briefing overlay and states on sub-level path navigation changes
-  // Guarded by prevSubLevelRef to prevent resets on Run clicks (pyodide object changes)
+  // Resolve mission details
+  const missionData = getSubLevel(levelId, subLevelId);
+  const level = missionData?.level;
+  const mission = missionData?.subLevel;
+  const isChallenge = mission?.type === 'challenge';
+
+  const isComplete = phase === 'complete';
+  const isActive = phase === 'active' || phase === 'situation' || phase === 'task';
+
+  // Static adapt to prevent resets on run
   useEffect(() => {
     const missionKey = `${levelId}/${subLevelId}`;
-    if (prevSubLevelRef.current === missionKey) {
-      return;
-    }
-    prevSubLevelRef.current = missionKey;
-
-    setBriefingAccepted(false);
-    setMessages([]);
+    if (prevSubLevelRef.current === missionKey) return;
+    
+    setPhase('loading');
+    setOutput({ stdout: '', stderr: '', error: null });
     setLastExpressionResult(null);
-    setOutput({ stdout: '', stderr: '', error: null, stateDelta: null });
+    setDatasetsLoaded(false);
+    setHintsUsed(0);
     setEarnedDPState(null);
     setLevelCompleted(false);
-    setDatasetsLoaded(false);
-    phaseRunRef.current = false;
-    codeLoadedRef.current = null;
+    setBriefingAccepted(false);
+    setInspectDataset(null);
+    setActiveGuidedStepIndex(0);
+    setHintClickCount(0);
 
-    if (pyodide && pyodide.isReady) {
-      pyodide.resetNamespace().catch(() => {});
-    }
-
-    // Save current mission status to progress store
-    if (levelId && subLevelId) {
-      saveCurrentMission(levelId, subLevelId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    prevSubLevelRef.current = missionKey;
   }, [levelId, subLevelId]);
 
-  // --- Floating Toast Unlocks ---
-  const triggerAchievementToast = useCallback((achievementId) => {
-    const details = ACHIEVEMENT_REGISTRY[achievementId];
-    if (!details) return;
+  // Load saved code
+  useEffect(() => {
+    if (!mission || !levelId || !subLevelId) return;
+    const missionKey = `${levelId}/${subLevelId}`;
+    if (codeLoadedRef.current === missionKey) return;
 
-    const toastId = `toast-${Date.now()}-${achievementId}`;
-    setActiveToasts((prev) => [...prev, { id: toastId, ...details }]);
-
-    // Fade out after 4.5 seconds
-    setTimeout(() => {
-      setActiveToasts((prev) => prev.filter((t) => t.id !== toastId));
-    }, 4500);
-  }, []);
-
-  // --- Add chat messages with typing animation and timestamps ---
-  const addMessages = useCallback(async (texts, sender = 'maya') => {
-    const timeOptions = { hour: '2-digit', minute: '2-digit' };
-    for (const item of texts) {
-      const text = typeof item === 'string' ? item : item.text;
-      const customTyping = typeof item === 'object' && item.typing !== undefined ? item.typing : TYPING_DELAY;
-      const customDelay = typeof item === 'object' && item.delay !== undefined ? item.delay : MESSAGE_DELAY;
-
-      const typingId = `typing-${Date.now()}`;
-      setMessages((prev) => [...prev, { id: typingId, sender, text: '', isTyping: true }]);
-      await new Promise((r) => setTimeout(r, customTyping));
-      
-      const timestamp = new Date().toLocaleTimeString([], timeOptions);
-      setMessages((prev) => [
-        ...prev.filter((m) => m.id !== typingId),
-        { id: nextMsgId(), sender, text, timestamp, isTyping: false },
-      ]);
-      await new Promise((r) => setTimeout(r, customDelay));
+    const savedCode = SaveSystem.getCode(levelId, subLevelId);
+    const starter = savedCode || mission.starterCode || '';
+    if (editorRef.current?.setCode) {
+      editorRef.current.setCode(starter);
     }
+    setCode(starter);
+    codeLoadedRef.current = missionKey;
+  }, [levelId, subLevelId, mission]);
+
+  // Toast achievements
+  const triggerAchievementToast = useCallback((id) => {
+    const toast = { id: Date.now(), title: id, description: "Unlocked progress marker." };
+    setActiveToasts(prev => [...prev, toast]);
+    setTimeout(() => {
+      setActiveToasts(prev => prev.filter(t => t.id !== toast.id));
+    }, 4000);
   }, []);
 
-  // --- Interpolate template variables in mentor text ---
-  const interpolate = useCallback((text, vars = {}) => {
-    if (!text || !vars) return text;
-    return text.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-      return vars[key] !== undefined ? String(vars[key]) : `{{${key}}}`;
-    });
-  }, []);
-
-  // --- Initialize Mission Engine ---
+  // Initialize MissionEngine
   useEffect(() => {
     if (!missionData) return;
 
@@ -139,121 +109,112 @@ function MissionView() {
       levelsList: levels,
       onStateUpdate: (updates) => {
         if (updates.phase !== undefined) setPhase(updates.phase);
-        
-        // Pass stdout, stderr, and error to OutputPanel state
         if (updates.output !== undefined) {
           setOutput(updates.output);
-          // Set notebook evaluated last expression result
-          if (updates.output.error) {
-            setLastExpressionResult(null);
-          }
+          if (updates.output.error) setLastExpressionResult(null);
         }
-        
         if (updates.datasetsLoaded !== undefined) setDatasetsLoaded(updates.datasetsLoaded);
         if (updates.earnedDP !== undefined) setEarnedDPState(updates.earnedDP);
-        if (updates.challengeStatesReached !== undefined) {
-          setChallengeStatesReached(updates.challengeStatesReached);
-        }
         if (updates.levelCompleted !== undefined) {
           setTimeout(() => {
             setLevelCompleted(updates.levelCompleted);
           }, 3500);
         }
-        
-        // Trigger achievements toasts on state update unlock signals
         if (updates.newlyUnlocked !== undefined && updates.newlyUnlocked.length > 0) {
-          updates.newlyUnlocked.forEach((id) => {
-            triggerAchievementToast(id);
-          });
+          updates.newlyUnlocked.forEach((id) => triggerAchievementToast(id));
         }
       },
-      addMessages,
-      setMessages,
-      GUIDED_PHASE,
-      CHALLENGE_PHASE,
+      addMessages: () => Promise.resolve(), // stub chat
+      setMessages: () => {}, // stub chat
+      GUIDED_PHASE: { SITUATION: 'situation', ACTIVE: 'active', COMPLETE: 'complete' },
+      CHALLENGE_PHASE: { SITUATION: 'situation', ACTIVE: 'active', COMPLETE: 'complete' }
     });
-  }, [levelId, subLevelId, missionData, pyodide, addMessages, triggerAchievementToast]);
+  }, [levelId, subLevelId, missionData, pyodide, triggerAchievementToast]);
 
-  // Load previously saved code for this mission (improves editor sync)
-  // Uses codeLoadedRef to load only once per mission and SaveSystem + setCode()
+  // Load datasets
   useEffect(() => {
-    if (!mission || !levelId || !subLevelId) return;
-    const missionKey = `${levelId}/${subLevelId}`;
-    if (codeLoadedRef.current === missionKey) return;
-
-    const savedCode = SaveSystem.getCode(levelId, subLevelId);
-    if (savedCode && editorRef.current?.setCode) {
-      // Use the new setCode method exposed by CodeEditor ref
-      editorRef.current.setCode(savedCode);
-      setCode(savedCode);
-    }
-    codeLoadedRef.current = missionKey;
-  }, [levelId, subLevelId, mission]);
-
-  // --- Generate and load datasets ---
-  useEffect(() => {
-    if (!mission || !pyodide.isReady || datasetsLoaded || !engineRef.current) return;
-
+    if (!mission || !pyodide.isReady || datasetsLoaded || !engineRef.current || !briefingAccepted) return;
     const seed = DatasetEngine.getOrCreateSeed();
     const datasetEngineInstance = new DatasetEngine(seed);
     engineRef.current.loadDatasets(datasetEngineInstance);
-  }, [mission, pyodide.isReady, datasetsLoaded]);
+  }, [mission, pyodide.isReady, datasetsLoaded, briefingAccepted]);
 
-  // --- Conversation flow (triggered AFTER briefing accepted) ---
+  // Intro flow
   useEffect(() => {
-    if (!mission || !datasetsLoaded || phaseRunRef.current || !engineRef.current || !briefingAccepted) return;
-    phaseRunRef.current = true;
-
+    if (!mission || !datasetsLoaded || !engineRef.current || !briefingAccepted) return;
     engineRef.current.startIntro();
   }, [mission, datasetsLoaded, briefingAccepted]);
 
-  // --- Handle code run ---
-  const handleRun = useCallback(async () => {
+  // Compile steps list using a temp ConversationEngine adapter
+  const steps = useMemo(() => {
+    if (!mission) return [];
+    const tempEngine = new ConversationEngine({
+      addMessages: () => {},
+      setMessages: () => {},
+      setPhase: () => {},
+      mentor: 'maya',
+      GUIDED_PHASE: {},
+      CHALLENGE_PHASE: {}
+    });
+    return tempEngine.getGuidedSteps(mission);
+  }, [mission]);
+
+  // Reset hint index when step changes
+  useEffect(() => {
+    setHintClickCount(0);
+  }, [activeGuidedStepIndex]);
+
+  // Run + validate cell
+  const handleRunCell = async () => {
     if (!pyodide.isReady || !engineRef.current) return;
 
     const codeToRun = editorRef.current?.getCode?.() || code;
     if (!codeToRun.trim()) return;
 
-    // Reset old result before executing
     setLastExpressionResult(null);
 
-    // Run + validate in a single execution. MissionEngine.runAndValidate is the
-    // sole owner of code execution, so the learner's code runs exactly once and
-    // the conversation always advances when the active step is satisfied.
-    const result = await engineRef.current.runAndValidate(codeToRun, hintsUsed, interpolate);
-
-    // Save evaluated expression result (if any) to notebook state
+    const result = await engineRef.current.runAndValidate(codeToRun, hintsUsed, (txt) => txt);
+    
     if (result && result.lastExpressionResult) {
       setLastExpressionResult(result.lastExpressionResult);
     }
-  }, [pyodide, code, hintsUsed, interpolate]);
 
-  // --- Handle hint used ---
-  const handleHintUsed = useCallback((count) => {
-    setHintsUsed(count);
-  }, []);
+    // Check if step advanced
+    if (result && !result.error) {
+      const isStillGuided = mission.type === 'guided';
+      if (isStillGuided) {
+        const nextStepIndex = engineRef.current.activeGuidedStepIndex;
+        if (nextStepIndex !== activeGuidedStepIndex) {
+          setActiveGuidedStepIndex(nextStepIndex);
+          // Scroll next cell into view
+          setTimeout(() => {
+            const nextCellEl = document.getElementById(`notebook-cell-${nextStepIndex}`);
+            nextCellEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }
+      }
+    }
+  };
 
-  // --- Handle code change ---
+  const handleHintUsed = () => {
+    setHintClickCount(prev => prev + 1);
+    setHintsUsed(prev => prev + 1);
+  };
+
   const handleCodeChange = useCallback((newCode) => {
     setCode(newCode);
   }, []);
 
-  // --- Handle dataset inspect trigger from chat bubble link ---
   const handleDatasetPreview = useCallback((filename) => {
     setInspectDataset(filename);
   }, []);
 
-  // --- Navigate to next sub-level ---
   const handleNext = useCallback(() => {
     const next = getNextSubLevel(levelId, subLevelId);
-    if (next) {
-      navigate(`/level/${next.level.id}/${next.subLevel.id}`);
-    } else {
-      navigate(`/level/${levelId}`);
-    }
+    if (next) navigate(`/level/${next.level.id}/${next.subLevel.id}`);
+    else navigate(`/level/${levelId}`);
   }, [navigate, levelId, subLevelId]);
 
-  // --- Error: not found ---
   if (!missionData) {
     return (
       <div className="mission-view mission-view--error">
@@ -263,126 +224,19 @@ function MissionView() {
     );
   }
 
-  // --- Pyodide initialization error ---
-  if (pyodide.status === 'error') {
-    return (
-      <div className="mission-view mission-view--error" id="pyodide-error">
-        <div className="mission-view__loader">
-          <div className="mission-view__loader-icon">⚠️</div>
-          <h3>Python Environment Failed to Start</h3>
-          <p className="mission-view__loader-msg">
-            {pyodide.error || 'The Python worker failed to initialize.'}
-          </p>
-          <p className="mission-view__loader-note">
-            Check the browser console for details, then reload the page and try again.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // --- Pyodide loading ---
-  if (pyodide.isLoading || !pyodide.isReady) {
-    return (
-      <div className="mission-view mission-view--loading" id="pyodide-loading">
-        <div className="mission-view__loader">
-          <div className="mission-view__loader-icon animate-pulse">🐍</div>
-          <h3>Preparing Python Environment</h3>
-          <p className="mission-view__loader-msg">
-            {pyodide.loadingMessage || 'Initializing...'}
-          </p>
-          <div className="mission-view__loader-bar">
-            <div
-              className="mission-view__loader-fill"
-              style={{
-                width: pyodide.status === 'loading-packages' ? '60%' : '25%',
-              }}
-            />
-          </div>
-          <p className="mission-view__loader-note">
-            First load takes 10–15 seconds. Subsequent loads are cached.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const mentor = mission.mentor || level.mentor;
+  const mentor = mission.mentor || level.mentor || 'maya';
   const mentorData = MENTORS[mentor];
-  const isComplete = phase === GUIDED_PHASE.COMPLETE || phase === CHALLENGE_PHASE.COMPLETE;
-  const isActive = phase === GUIDED_PHASE.ACTIVE || phase === CHALLENGE_PHASE.ACTIVE;
+  const activeStep = isChallenge ? null : (steps[activeGuidedStepIndex] || steps[0] || null);
 
-  // Calculate dynamic rewards using RewardEngine
-  const rewards = RewardEngine.calculateRewards(mission.rewards || mission.points, {
-    hintsUsed,
-    isChallenge,
-  });
-  const earnedDp = earnedDPState !== null ? earnedDPState : rewards.earnedDP;
-
-  // Find next level promotion details dynamically
+  // Dynamic values calculation
   const currentLevelIdx = levels.findIndex(l => l.id === levelId);
   const nextLevel = currentLevelIdx !== -1 && currentLevelIdx < levels.length - 1 ? levels[currentLevelIdx + 1] : null;
   const promotionTitle = nextLevel ? nextLevel.title : 'Data Mastery Legend';
 
   return (
-    <div className="mission-view" id="mission-view-page">
+    <div className="mission-view-v2" id="mission-view-page">
       
-      {/* 1. Dataset Card Briefing Overlay */}
-      {!briefingAccepted && (
-        <div className="briefing-overlay" id="briefing-overlay">
-          <div className="briefing-card animate-fade-in-scale">
-            <div className="briefing-card__header">
-              <span className="briefing-card__badge">📁 Assignment Briefing</span>
-              <h2>Accept Task: {mission.title}</h2>
-              <p className="briefing-card__subtitle">{mission.subtitle}</p>
-            </div>
-            
-            <div className="briefing-card__dataset">
-              <h3 className="briefing-card__section-title">Attached Database Profile</h3>
-              <div className="briefing-card__profile">
-                <div className="briefing-card__profile-row">
-                  <span className="profile-label">Filename:</span>
-                  <span className="profile-value profile-value--filename">📄 {mission.datasetCard?.filename || 'customers.csv'}</span>
-                </div>
-                <div className="briefing-card__profile-grid">
-                  <div className="briefing-card__profile-item">
-                    <span className="profile-label">Rows</span>
-                    <span className="profile-value">{mission.datasetCard?.rows || '1,247'}</span>
-                  </div>
-                  <div className="briefing-card__profile-item">
-                    <span className="profile-label">Columns</span>
-                    <span className="profile-value">{mission.datasetCard?.columns || '9'}</span>
-                  </div>
-                  <div className="briefing-card__profile-item">
-                    <span className="profile-label">Difficulty</span>
-                    <span className="profile-value profile-value--diff">{mission.datasetCard?.difficulty || 'Beginner'}</span>
-                  </div>
-                </div>
-                <div className="briefing-card__profile-row">
-                  <span className="profile-label">Department:</span>
-                  <span className="profile-value">{mission.datasetCard?.department || 'Marketing Analytics'}</span>
-                </div>
-                <div className="briefing-card__profile-row">
-                  <span className="profile-label">Description:</span>
-                  <span className="profile-value profile-value--desc">{mission.datasetCard?.description || 'CRM customer record file.'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="briefing-card__footer">
-              <button 
-                className="briefing-card__btn" 
-                onClick={() => setBriefingAccepted(true)}
-                id="accept-briefing-btn"
-              >
-                Accept Assignment & Load File
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Floating Achievement Unlock Notifications */}
+      {/* Floating Achievement Unlock Toasts */}
       <div className="achievement-toasts-container">
         {activeToasts.map((toast) => (
           <div key={toast.id} className="achievement-toast animate-slide-in-right">
@@ -390,13 +244,346 @@ function MissionView() {
             <div className="achievement-toast__content">
               <span className="achievement-toast__label">Achievement Unlocked!</span>
               <h4 className="achievement-toast__title">{toast.title}</h4>
-              <p className="achievement-toast__desc">{toast.description}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* 3. Dataset Attachment Inspector Overlay */}
+      {/* Centralized Notebook Document container (Comfortable reading width: 900-1100px) */}
+      <div className="notebook-container">
+        
+        {/* 1. Notebook Header */}
+        <header className="notebook-doc-header">
+          <Link to={`/level/${levelId}`} className="notebook-doc-back">
+            <ChevronLeft className="w-4 h-4" /> Back to level
+          </Link>
+          <div className="notebook-doc-meta mt-2">
+            <span className="notebook-doc-sub">{level?.title}</span>
+            <h1>{mission.title}</h1>
+            <p className="description-text">{mission.subtitle}</p>
+          </div>
+        </header>
+
+        {/* 2. Mission Summary Card */}
+        <section className="notebook-summary-card">
+          <div className="summary-grid">
+            <div className="summary-item">
+              <span className="summary-label">Mission</span>
+              <span className="summary-value">{mission.title}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Dataset</span>
+              <span 
+                className="summary-value summary-value--file clickable" 
+                onClick={() => handleDatasetPreview(mission.datasetCard?.filename || 'customers.csv')}
+              >
+                📄 {mission.datasetCard?.filename || 'customers.csv'}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Difficulty</span>
+              <span className="summary-value summary-value--diff">{mission.datasetCard?.difficulty || 'Beginner'}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Estimated Time</span>
+              <span className="summary-value">⏱️ {mission.estDuration || '3m'}</span>
+            </div>
+          </div>
+          <div className="summary-outcome">
+            <span className="summary-label">Expected Outcome</span>
+            <p className="summary-outcome-text">{mission.learningObjective}</p>
+          </div>
+
+          {!briefingAccepted && (
+            <div className="summary-action-row mt-4">
+              <button 
+                onClick={() => setBriefingAccepted(true)} 
+                className="accept-briefing-inline-btn"
+                id="accept-briefing-btn"
+              >
+                Accept Assignment & Load Dataset
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* 3. Notebook cells flow vertically */}
+        <div className="notebook-cells-list mt-6">
+          
+          {isChallenge ? (
+            // CHALLENGE MODE: Render Maya inline above the single workspace cell
+            <>
+              {briefingAccepted && (
+                <div className="maya-mentor-card-inline animate-fade-in-scale">
+                  <div className="maya-mentor-card-inline__header">
+                    <span className="avatar-badge">👩‍💻 Maya</span>
+                    <span className="role-label">{mentorData?.role || 'Senior Analyst'}</span>
+                  </div>
+                  <div className="maya-mentor-card-inline__body">
+                    <p className="mentor-explainer">
+                      {mission.businessSituation?.join(' ') || 'Write a query to solve the challenge.'}
+                    </p>
+
+                    {/* Contextual Hints */}
+                    <div className="mentor-hints-wrapper mt-3">
+                      {hintClickCount === 0 && (
+                        <button onClick={handleHintUsed} className="hint-btn flex items-center gap-1.5">
+                          <HelpCircle className="w-3.5 h-3.5" /> Show Hint
+                        </button>
+                      )}
+                      {hintClickCount === 1 && (
+                        <div className="hint-revealed">
+                          <span className="hint-label">💡 Hint 1:</span>
+                          <p>{mission.hints?.[0] || 'Verify spelling inputs.'}</p>
+                          <button onClick={handleHintUsed} className="hint-btn mt-2">Reveal next hint</button>
+                        </div>
+                      )}
+                      {hintClickCount === 2 && (
+                        <div className="hint-revealed">
+                          <span className="hint-label">💡 Hint 2:</span>
+                          <p>{mission.hints?.[1] || 'Group the fields appropriately.'}</p>
+                          <button onClick={handleHintUsed} className="hint-btn mt-2">Show detailed code template</button>
+                        </div>
+                      )}
+                      {hintClickCount >= 3 && (
+                        <div className="hint-revealed">
+                          <span className="hint-label">🚀 Code Hint:</span>
+                          <p className="font-mono text-xs text-blue-400 mt-1">{mission.hints?.[2] || 'Check pandas reference pages.'}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="notebook-cell active" id="notebook-cell-challenge">
+                <div className="notebook-cell__header">
+                  <span className="cell-badge cell-badge--active font-mono">Cell [1]</span>
+                  <span className="cell-status text-[#3b82f6]">Challenge Assignment</span>
+                </div>
+                <div className="notebook-cell__body">
+                  <div className="cell-markdown">
+                    <p>Load the customer file and show the first few records.</p>
+                  </div>
+
+                  <div className="cell-editor-container">
+                    <CodeEditor
+                      ref={editorRef}
+                      initialCode={mission.starterCode}
+                      onChange={handleCodeChange}
+                      readOnly={isComplete || !briefingAccepted}
+                    />
+                  </div>
+
+                  <div className="cell-actions-row">
+                    <button 
+                      onClick={handleRunCell} 
+                      disabled={!pyodide.isReady || pyodide.isRunning || isComplete || !briefingAccepted} 
+                      className="run-cell-btn"
+                    >
+                      {pyodide.isRunning ? '⏳ Running...' : '▶ Run Cell (Shift + Enter)'}
+                    </button>
+                  </div>
+
+                  {/* Inline Cell Output */}
+                  <div className="cell-output-container">
+                    <OutputPanel
+                      stdout={output.stdout}
+                      stderr={output.stderr}
+                      error={output.error}
+                      stateDelta={output.stateDelta}
+                      isRunning={pyodide.isRunning}
+                      lastExpressionResult={lastExpressionResult}
+                      isComplete={isComplete}
+                      summary={mission.summary}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            // GUIDED MODE: Render multiple sequential steps as cells
+            steps.map((step, idx) => {
+              const isCellCompleted = idx < activeGuidedStepIndex;
+              const isCellActive = idx === activeGuidedStepIndex;
+              const isCellLocked = idx > activeGuidedStepIndex;
+
+              return (
+                <div key={step.id} className="notebook-item-wrapper">
+                  
+                  {/* Render Maya inline DIRECTLY before the current active cell */}
+                  {isCellActive && briefingAccepted && (
+                    <div className="maya-mentor-card-inline animate-fade-in-scale">
+                      <div className="maya-mentor-card-inline__header">
+                        <span className="avatar-badge">👩‍💻 Maya</span>
+                        <span className="role-label">{mentorData?.role || 'Senior Analyst'}</span>
+                      </div>
+                      <div className="maya-mentor-card-inline__body">
+                        <p className="mentor-explainer">
+                          {step.mentor ? (typeof step.mentor === 'function' ? step.mentor(mission.datasetCard?.filename || 'customers.csv') : step.mentor) : "Let's run this cell."}
+                        </p>
+
+                        {/* Interactive Hint Clicker */}
+                        <div className="mentor-hints-wrapper mt-3">
+                          {hintClickCount === 0 && (
+                            <button onClick={handleHintUsed} className="hint-btn flex items-center gap-1.5">
+                              <HelpCircle className="w-3.5 h-3.5" /> Show Hint
+                            </button>
+                          )}
+                          {hintClickCount === 1 && (
+                            <div className="hint-revealed">
+                              <span className="hint-label">💡 Hint 1:</span>
+                              <p>{mission.hints?.[0] || 'Verify code structure details.'}</p>
+                              <button onClick={handleHintUsed} className="hint-btn mt-2">Reveal next hint</button>
+                            </div>
+                          )}
+                          {hintClickCount === 2 && (
+                            <div className="hint-revealed">
+                              <span className="hint-label">💡 Hint 2:</span>
+                              <p>{mission.hints?.[1] || 'Call pd.read_csv to import the dataset.'}</p>
+                              <button onClick={handleHintUsed} className="hint-btn mt-2">Reveal code snippet</button>
+                            </div>
+                          )}
+                          {hintClickCount >= 3 && (
+                            <div className="hint-revealed">
+                              <span className="hint-label">🚀 Code Hint:</span>
+                              <p className="font-mono text-xs text-blue-400 mt-1">
+                                {mission.hints?.[2] || 'df = pd.read_csv("customers.csv")'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div 
+                    id={`notebook-cell-${idx}`}
+                    className={`notebook-cell ${isCellCompleted ? 'completed' : ''} ${isCellActive ? 'active' : ''} ${isCellLocked ? 'locked' : ''}`}
+                  >
+                    <div className="notebook-cell__header">
+                      <span className="cell-badge font-mono">Cell [{idx + 1}]</span>
+                      <span className="cell-status">
+                        {isCellCompleted && <span className="flex items-center gap-1 text-emerald-500"><CheckCircle2 className="w-3.5 h-3.5" /> Completed</span>}
+                        {isCellActive && <span className="flex items-center gap-1 text-[#3b82f6]"><Play className="w-3.5 h-3.5 fill-current" /> Active</span>}
+                        {isCellLocked && <span className="flex items-center gap-1 text-zinc-500"><Lock className="w-3.5 h-3.5" /> Locked</span>}
+                      </span>
+                    </div>
+
+                    <div className="notebook-cell__body">
+                      <div className="cell-markdown">
+                        <p>{step.task}</p>
+                        {step.scaffoldNote && (
+                          <div className="scaffold-note-callout mt-2 p-3 bg-zinc-900 border border-zinc-700/50 rounded-lg text-xs text-zinc-400">
+                            ℹ️ {step.scaffoldNote}
+                          </div>
+                        )}
+                      </div>
+
+                      {isCellActive && (
+                        <>
+                          <div className="cell-editor-container">
+                            <CodeEditor
+                              ref={editorRef}
+                              initialCode={mission.starterCode}
+                              onChange={handleCodeChange}
+                              readOnly={isComplete || !briefingAccepted}
+                            />
+                          </div>
+
+                          <div className="cell-actions-row">
+                            <button 
+                              onClick={handleRunCell} 
+                              disabled={!pyodide.isReady || pyodide.isRunning || isComplete || !briefingAccepted} 
+                              className="run-cell-btn"
+                            >
+                              {pyodide.isRunning ? '⏳ Running...' : '▶ Run Cell (Shift + Enter)'}
+                            </button>
+                          </div>
+
+                          {/* Inline Output inside Active Cell */}
+                          <div className="cell-output-container">
+                            <OutputPanel
+                              stdout={output.stdout}
+                              stderr={output.stderr}
+                              error={output.error}
+                              stateDelta={output.stateDelta}
+                              isRunning={pyodide.isRunning}
+                              lastExpressionResult={lastExpressionResult}
+                              isComplete={isComplete}
+                              summary={mission.summary}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {isCellCompleted && (
+                        <div className="cell-completed-summary bg-zinc-900/40 p-4 border border-emerald-500/10 rounded-lg">
+                          <span className="text-zinc-500 text-xs font-mono">Output Log:</span>
+                          <pre className="text-emerald-400 text-xs mt-1 font-mono">✓ Verified successfully.</pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {/* 4. Reflection takeaways card at bottom */}
+          {isComplete && (
+            <div className="notebook-cell reflection-card animate-fade-in-up mt-6">
+              <div className="reflection-card__badge flex items-center justify-center gap-1.5">
+                <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500 animate-pulse" />
+                <span>Lesson Reflections Completed</span>
+              </div>
+              <h2>Today's Takeaways</h2>
+              <div className="reflection-card__divider" />
+              
+              <div className="reflection-card__content text-left">
+                <div className="reflection-section">
+                  <h4>What you learned:</h4>
+                  <ul className="reflection-list mt-2">
+                    {mission.summary?.concepts.map((concept, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-zinc-300 text-sm py-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        <span>{concept}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="reflection-section mt-6">
+                  <h4>Why this is important in business:</h4>
+                  <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
+                    {mission.summary?.why}
+                  </p>
+                </div>
+
+                <div className="reflection-grid mt-6">
+                  <div className="reflection-stat-box">
+                    <span className="stat-label">Accuracy Index</span>
+                    <span className="stat-val text-emerald-400">92%</span>
+                  </div>
+                  <div className="reflection-stat-box">
+                    <span className="stat-label">DP Points Earned</span>
+                    <span className="stat-val text-amber-500">+{earnedDPState || 150} DP</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="reflection-card__actions mt-8">
+                <button onClick={handleNext} className="reflection-next-btn">
+                  Start Next Lesson →
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Dataset Inspect Modal */}
       {inspectDataset && (
         <div className="preview-modal-overlay" onClick={() => setInspectDataset(null)} id="preview-modal">
           <div className="preview-modal-card animate-fade-in-scale" onClick={(e) => e.stopPropagation()}>
@@ -406,9 +593,12 @@ function MissionView() {
             </div>
             <div className="preview-modal-body">
               <div className="briefing-card__profile">
-                <div className="briefing-card__profile-row">
+                <div className="briefing-card__profile-row flex items-center">
                   <span className="profile-label">Filename:</span>
-                  <span className="profile-value">📄 {inspectDataset}</span>
+                  <span className="profile-value flex items-center gap-1">
+                    <FileText className="w-4 h-4 text-blue-500" />
+                    {inspectDataset}
+                  </span>
                 </div>
                 <div className="briefing-card__profile-grid">
                   <div className="briefing-card__profile-item">
@@ -438,135 +628,6 @@ function MissionView() {
         </div>
       )}
 
-      {/* Left panel: Chat + Hints */}
-      <div className="mission-view__chat-panel">
-        <div className="mission-view__chat-header">
-          <Link to={`/level/${levelId}`} className="mission-view__back-btn">
-            ← Level
-          </Link>
-          <div className="mission-view__chat-title">
-            <span className="mission-view__mentor-avatar">
-              {mentorData?.emoji || '👩‍💻'}
-            </span>
-            <div>
-              <h3>{mentorData?.name || 'Maya'}</h3>
-              <span className="mission-view__mentor-role">
-                {mentorData?.role || 'Senior Data Analyst'}
-              </span>
-            </div>
-          </div>
-          <div className="mission-view__mission-title">
-            <span className="mission-view__mission-type">
-              {isChallenge ? '🏆 Challenge' : `${subLevelId}`}
-            </span>
-            {mission.title}
-          </div>
-        </div>
-
-        <ChatPanel 
-          messages={messages} 
-          mentor={mentor} 
-          onDatasetPreview={handleDatasetPreview} 
-        />
-
-        {isActive && (
-          <HintDrawer
-            hints={mission.hints}
-            missionType={mission.type}
-            onHintUsed={handleHintUsed}
-          />
-        )}
-
-        {isComplete && (
-          <div className="mission-view__success-bar animate-fade-in-up">
-            <div className="mission-view__success-content">
-              <span className="mission-view__success-icon">🎉</span>
-              <div>
-                <h4 className="mission-view__success-title">Mission Complete!</h4>
-                <p className="mission-view__success-subtitle">
-                  {mentorData?.name} is impressed. Earned <span className="mission-view__success-points">+{earnedDp} DP</span>
-                </p>
-              </div>
-            </div>
-            <button
-              className="mission-view__next-btn mission-view__next-btn--pulse"
-              onClick={handleNext}
-              id="next-mission-btn"
-            >
-              Next Mission →
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Right panel: Code + Output */}
-      <div className="mission-view__work-panel">
-        <div className="mission-view__editor-section">
-          <div className="mission-view__editor-header">
-            <span className="mission-view__editor-tab">
-              <span className="mission-view__editor-dot" />
-              mission.py
-            </span>
-            <button
-              className="mission-view__run-btn"
-              onClick={handleRun}
-              disabled={!pyodide.isReady || pyodide.isRunning || isComplete || !briefingAccepted}
-              id="run-code-btn"
-            >
-              {pyodide.isRunning ? '⏳ Running...' : '▶ Run'}
-            </button>
-          </div>
-          <div className="mission-view__editor-body">
-            <CodeEditor
-              ref={editorRef}
-              initialCode={mission.starterCode}
-              onChange={handleCodeChange}
-              readOnly={isComplete || !briefingAccepted}
-            />
-          </div>
-        </div>
-        
-        {/* Notebook-like Output Console Panel */}
-        <div className="mission-view__output-section">
-          <OutputPanel
-            stdout={output.stdout}
-            stderr={output.stderr}
-            error={output.error}
-            stateDelta={output.stateDelta}
-            isRunning={pyodide.isRunning}
-            lastExpressionResult={lastExpressionResult}
-            isComplete={isComplete}
-            summary={mission.summary}
-          />
-        </div>
-      </div>
-
-      {levelCompleted && (
-        <div className="level-complete-overlay" id="level-complete-modal">
-          <div className="level-complete-card">
-            <div className="level-complete-card__badge">🏆</div>
-            <h2 className="level-complete-card__title">Level Complete!</h2>
-            <p className="level-complete-card__subtitle">{level.completionSubtitle || 'You survived your first week at NovaMetrics.'}</p>
-            <div className="level-complete-card__divider" />
-            <p className="level-complete-card__achievement">
-              {level.completionPromotionText || `You successfully completed ${level.title}! Your mentor promoted you.`}
-            </p>
-            <div className="level-complete-card__promo">
-              <span className="level-complete-card__promo-icon">⚡</span>
-              <span className="level-complete-card__promo-text">
-                Promoted to: <strong>{promotionTitle}</strong>
-              </span>
-            </div>
-            <button
-              className="level-complete-card__btn"
-              onClick={() => navigate('/dashboard')}
-              id="promotion-confirm-btn"
-            >
-              Advance to {nextLevel ? nextLevel.title : 'Legend Status'}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

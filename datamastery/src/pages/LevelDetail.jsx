@@ -2,6 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getLevel } from '../content/levelRegistry.js';
 import { getLevelStats, loadProgress } from '../stores/progressStore.js';
 import { MENTORS } from '../utils/constants.js';
+import { CheckCircle2, Lock, Play, Award, Clock, ChevronLeft } from 'lucide-react';
 import './LevelDetail.css';
 
 function LevelDetail() {
@@ -45,7 +46,10 @@ function LevelDetail() {
     <div className="level-detail" id="level-detail-page">
       {/* Header */}
       <div className="level-detail__header animate-fade-in-up">
-        <Link to="/dashboard" className="level-detail__back">← Dashboard</Link>
+        <Link to="/dashboard" className="level-detail__back flex items-center gap-1">
+          <ChevronLeft className="w-4 h-4" />
+          Dashboard
+        </Link>
         <div className="level-detail__header-content">
           <div className="level-detail__icon">{level.icon}</div>
           <div className="level-detail__header-text">
@@ -53,7 +57,7 @@ function LevelDetail() {
             <p className="level-detail__desc">{level.description}</p>
             <div className="level-detail__meta">
               <span className="level-detail__mentor">
-                {mentorData?.emoji} with {mentorData?.name}
+                {mentorData?.emoji} with <strong>{mentorData?.name}</strong>
               </span>
               <span className="level-detail__progress-text">
                 {stats.completed}/{stats.total} complete · {stats.dp} DP earned
@@ -94,16 +98,19 @@ function LevelDetail() {
                 id={`sublevel-${sub.id}`}
               >
                 <div className="level-detail__step-indicator">
-                  {status === 'completed' && '✅'}
-                  {status === 'active' && (isChallenge ? '⭐' : '▶')}
-                  {status === 'locked' && '🔒'}
+                  {status === 'completed' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+                  {status === 'active' && (isChallenge ? <Award className="w-5 h-5 text-amber-500 animate-pulse" /> : <Play className="w-4 h-4 text-[#3b82f6] fill-[#3b82f6]" />)}
+                  {status === 'locked' && <Lock className="w-4 h-4 text-zinc-500" />}
                 </div>
                 <div className="level-detail__step-content">
                   <div className="level-detail__step-meta">
                     <span className="level-detail__step-id">
                       {isChallenge ? 'Final Challenge' : `Mission ${sub.id}`}
                     </span>
-                    <span className="level-detail__step-duration">⏱️ {duration}</span>
+                    <span className="level-detail__step-duration flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                      {duration}
+                    </span>
                   </div>
                   <h3 className="level-detail__step-title">{sub.title}</h3>
                   <div className="level-detail__step-footer">

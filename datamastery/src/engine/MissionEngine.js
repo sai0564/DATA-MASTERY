@@ -194,6 +194,12 @@ export class MissionEngine {
           stateDelta: result.stateDelta || null,
         },
       });
+      
+      // Inject Maya AI explanation for user's Python runtime errors
+      const mentor = this.mission.mentor || 'maya';
+      const explanation = this.conversationEngine.getFriendlyErrorExplanation(result.error, codeToRun, this.mission);
+      await this.conversationEngine.addMessages([explanation], mentor);
+      
       return result;
     }
 
